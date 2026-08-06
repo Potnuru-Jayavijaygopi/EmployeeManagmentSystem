@@ -1,0 +1,40 @@
+.payroll-container {
+  padding: 0;
+}
+
+.tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.border-top-accent {
+  border-top: 4px solid;
+}
+
+.border-top-blue { border-top-color: #3b82f6 !important; }
+.border-top-green { border-top-color: #22c55e !important; }
+.border-top-red { border-top-color: #ef4444 !important; }
+.border-top-yellow { border-top-color: #f59e0b !important; }
+
+.bg-blue-light { background-color: #eff6ff !important; }
+.bg-success-light { background-color: #dcfce7 !important; }
+.bg-danger-light { background-color: #fee2e2 !important; }
+.bg-warning-light { background-color: #fef3c7 !important; }
+
+.text-blue { color: #3b82f6 !important; }
+.text-success { color: #22c55e !important; }
+.text-danger { color: #ef4444 !important; }
+.text-warning-dark { color: #b45309 !important; }
+.bg-warning { background-color: #f59e0b !important; }
+
+.border-blue { border-color: #3b82f6 !important; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.bg-blue-dark {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}

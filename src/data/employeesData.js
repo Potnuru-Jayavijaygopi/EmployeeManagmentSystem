@@ -1,0 +1,38 @@
+export const    employeesData = [
+    {
+      id: "EMP011",
+      name: "Srinivas Kandagatla",
+      role: "Junior Developer L1",
+      base: "₹30,000",
+      allowances: "₹18,000",
+      deductions: "-₹5,000",
+      net: "₹48,000",
+    },
+    {
+      id: "EMP012",
+      name: "Rahul Sharma",
+      role: "Engineering Manager L3",
+      base: "₹80,000",
+      allowances: "₹38,000",
+      deductions: "-₹8,500",
+      net: "₹1,09,500",
+    },
+    {
+      id: "EMP001",
+      name: "Priya Nair",
+      role: "CTO Executive",
+      base: "₹35,000",
+      allowances: "₹19,000",
+      deductions: "-₹12,000",
+      net: "₹42,000",
+    },
+    {
+      id: "EMP007",
+      name: "Ananya Reddy",
+      role: "Senior Designer",
+      base: "₹55,000",
+      allowances: "₹25,000",
+      deductions: "-₹6,000",
+      net: "₹74,000",
+    },
+  ];

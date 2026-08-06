@@ -1,0 +1,169 @@
+
+
+.portal-hero-wrapper {
+
+  padding: 3rem 0;
+}
+
+
+.portal-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 1rem;
+  border-radius: 100px;
+}
+
+.portal-hero-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.portal-hero-badge.badge-green {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.portal-hero-badge.badge-green .dot {
+  background-color: #059669;
+}
+
+.portal-hero-badge.badge-purple {
+  background-color: #FAF5FF;
+  color: #7E22CE;
+}
+
+.portal-hero-badge.badge-purple .dot {
+  background-color: #7E22CE;
+}
+
+.portal-hero-badge.badge-blue {
+  background-color: #EFF6FF;
+  color: #2563EB;
+}
+
+.portal-hero-badge.badge-blue .dot {
+  background-color: #2563EB;
+}
+
+
+.portal-hero-heading {
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.text-green {
+  color: #059669;
+}
+
+.text-purple {
+  color: #7E22CE;
+}
+
+.text-blue {
+  color: #2563EB;
+}
+
+.portal-hero-desc {
+  font-size: 1.15rem;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+
+.hero-checklist-text {
+  font-size: 1.05rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+
+.hero-btn-primary {
+  font-weight: 600;
+  color: white !important;
+  transition: all 0.2s ease;
+}
+
+.hero-btn-primary.btn-green {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.hero-btn-primary.btn-green:hover {
+  background-color: #047857;
+}
+
+.hero-btn-primary.btn-purple {
+  background-color: #7E22CE;
+  border-color: #7E22CE;
+}
+
+.hero-btn-primary.btn-purple:hover {
+  background-color: #6B21A8;
+}
+
+.hero-btn-primary.btn-blue {
+  background-color: #2563EB;
+  border-color: #2563EB;
+}
+
+.hero-btn-primary.btn-blue:hover {
+  background-color: #1D4ED8;
+}
+
+
+.hero-btn-outline {
+  font-weight: 600;
+  background-color: white !important;
+  transition: all 0.2s ease;
+}
+
+.hero-btn-outline.outline-green {
+  color: #059669;
+  border: 1px solid #059669;
+}
+
+.hero-btn-outline.outline-green:hover {
+  background-color: #ECFDF5 !important;
+}
+
+.hero-btn-outline.outline-purple {
+  color: #7E22CE;
+  border: 1px solid #7E22CE;
+}
+
+.hero-btn-outline.outline-purple:hover {
+  background-color: #FAF5FF !important;
+}
+
+.hero-btn-outline.outline-blue {
+  color: #2563EB;
+  border: 1px solid #2563EB;
+}
+
+.hero-btn-outline.outline-blue:hover {
+  background-color: #EFF6FF !important;
+}
+
+
+.portal-hero-image-showcase {
+  position: relative;
+}
+
+.portal-hero-image-showcase img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 991px) {
+  .portal-hero-heading {
+    font-size: 2.25rem;
+  }
+}

@@ -1,0 +1,18 @@
+.documents-container {
+  padding: 0;
+}
+
+.tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.bg-blue-light { background-color: #eff6ff !important; }
+.bg-success-light { background-color: #dcfce7 !important; }
+
+.text-blue { color: #3b82f6 !important; }
+.text-success { color: #22c55e !important; }
+
+.bg-blue { background-color: #3b82f6 !important; }
+
+.border-blue { border-color: #3b82f6 !important; }
+.border-success { border-color: #22c55e !important; }

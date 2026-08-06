@@ -1,0 +1,202 @@
+.devices-session-manager {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 32px;
+}
+
+.dsm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dsm-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.dsm-toggle-group {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.dsm-toggle-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dsm-toggle-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.dsm-body {
+  padding: 24px;
+}
+
+.dsm-body-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dsm-subtitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.dsm-actions {
+  display: flex;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.dsm-action-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dsm-action-btn:hover {
+  background: #e2e8f0;
+}
+
+.dsm-action-btn.primary {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+}
+
+.session-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.session-card:last-child {
+  margin-bottom: 0;
+}
+
+.session-card.current {
+  border-color: #34d399;
+  background: #ffffff;
+}
+
+.current-badge {
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  background: #10b981;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.session-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.session-card.current .session-icon-box {
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.session-details {
+  flex-grow: 1;
+}
+
+.session-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+}
+
+.session-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot-sm {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.status-dot-sm.active {
+  background: #10b981;
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.dsm-action-btn.danger-outline {
+  border: 1px solid #fca5a5;
+  color: #ef4444;
+}
+
+.dsm-action-btn.danger-outline:hover {
+  background: #fef2f2;
+}
+
+.dsm-action-btn.primary-outline {
+  border: 1px solid #93c5fd;
+  color: #3b82f6;
+}
+
+.dsm-action-btn.primary-outline:hover {
+  background: #eff6ff;
+}

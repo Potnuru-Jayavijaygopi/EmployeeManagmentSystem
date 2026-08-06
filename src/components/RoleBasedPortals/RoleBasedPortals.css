@@ -1,0 +1,210 @@
+.role-portals-section {
+  background-color: #FFFFFF;
+}
+
+.system-structure-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #2563EB;
+  background-color: #EFF6FF;
+  padding: 0.35rem 0.75rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.role-portals-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.role-portals-subtitle {
+  font-size: 1.05rem;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+
+.portal-tabs-wrapper {
+  display: flex;
+  background: white;
+  border-radius: 100px;
+  border: 1px solid #E2E8F0;
+  padding: 0.35rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.portal-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 100px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.portal-tab:hover {
+  color: #0F172A;
+}
+
+
+.portal-tab.active-green { background-color: #D1FAE5; color: #059669; }
+.portal-tab.active-purple { background-color: #F3E8FF; color: #7E22CE; }
+.portal-tab.active-blue { background-color: #DBEAFE; color: #2563EB; }
+
+
+.portal-content-card {
+  background: white;
+  border-radius: 1.5rem;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+.portal-card-grid-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.4;
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, #F1F5F9 1px, transparent 1px),
+    linear-gradient(to bottom, #F1F5F9 1px, transparent 1px);
+  z-index: 0;
+}
+
+
+.portal-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+  border-radius: 100px;
+}
+
+.portal-icon-badge.badge-green { background-color: #ECFDF5; color: #10B981; }
+.portal-icon-badge.badge-purple { background-color: #FAF5FF; color: #A855F7; }
+.portal-icon-badge.badge-blue { background-color: #EFF6FF; color: #3B82F6; }
+
+.portal-card-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.portal-card-desc {
+  font-size: 1.05rem;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+
+.portal-btn {
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.portal-btn.btn-green { background-color: #D1FAE5; color: #059669; }
+.portal-btn.btn-green:hover { background-color: #A7F3D0; }
+
+.portal-btn.btn-purple { background-color: #F3E8FF; color: #7E22CE; }
+.portal-btn.btn-purple:hover { background-color: #E9D5FF; }
+
+.portal-btn.btn-blue { background-color: #DBEAFE; color: #2563EB; }
+.portal-btn.btn-blue:hover { background-color: #BFDBFE; }
+
+
+.portal-features-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.portal-feature-item {
+  font-size: 0.85rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+
+.portal-impact-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .portal-impact-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+.banner-green { background-color: #F0FDF4; border-top: 1px solid #D1FAE5; }
+.banner-purple { background-color: #FAF5FF; border-top: 1px solid #F3E8FF; }
+.banner-blue { background-color: #EFF6FF; border-top: 1px solid #DBEAFE; }
+
+.impact-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #475569;
+}
+
+.impact-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+
+.portal-image-wrapper {
+  background: white;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+  border: 1px solid #F1F5F9;
+}
+
+.portal-image-wrapper img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}

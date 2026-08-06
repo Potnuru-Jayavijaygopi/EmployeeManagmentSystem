@@ -1,0 +1,11 @@
+.tasks-container {
+  padding: 0;
+}
+
+.tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.bg-success-light {
+  background-color: #dcfce7 !important;
+}

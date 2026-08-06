@@ -1,0 +1,19 @@
+.table-header {
+  border-color: var(--border-color) !important;
+}
+.table-badge {
+  border: 1px solid var(--border-color);
+}
+.table-search-icon {
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--sub-text-color);
+  width: 14px;
+  height: 14px;
+}
+.table-search-input {
+  padding-left: 32px;
+  font-size: 0.875rem;
+  border-radius: var(--r-md);
+}

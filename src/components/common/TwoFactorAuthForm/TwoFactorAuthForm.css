@@ -1,0 +1,239 @@
+.two-factor-container {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+.two-factor-content {
+  padding: 32px 32px 24px 32px;
+}
+
+.two-factor-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.two-factor-logo {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-blue);
+  color: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+}
+
+.two-factor-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 8px 0;
+}
+
+.two-factor-subtitle {
+  font-size: 14px;
+  color: var(--sub-text-color);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.two-factor-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.4;
+}
+
+.two-factor-banner.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.two-factor-banner .icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #dc2626;
+}
+
+.two-factor-methods {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.method-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: var(--sub-text-color);
+  transition: all 0.2s;
+}
+
+.method-btn:hover {
+  background: var(--page-color);
+}
+
+.method-btn.active {
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+  background: #eff6ff;
+}
+
+.method-btn span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.two-factor-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.two-factor-info strong {
+  font-weight: 600;
+}
+
+.otp-inputs {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.otp-input {
+  width: 44px;
+  height: 52px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-color);
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.otp-input.has-value {
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+}
+
+.otp-input.is-error {
+  border-color: #ef4444;
+  color: var(--text-color);
+}
+.otp-input.is-error.has-value {
+  color: var(--text-color);
+}
+
+.attempts-container {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.attempts-text {
+  font-size: 11px;
+  color: var(--sub-text-color);
+  margin-bottom: 8px;
+}
+
+.attempts-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.attempt-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e5e7eb;
+}
+
+.attempt-dot.failed {
+  background: #ef4444;
+}
+
+.resend-text {
+  text-align: center;
+  font-size: 13px;
+  color: var(--sub-text-color);
+  margin-top: 16px;
+}
+
+.resend-link {
+  color: var(--primary-blue);
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.resend-link:hover {
+  text-decoration: underline;
+}
+
+.resend-link.disabled {
+  color: #f59e0b;
+  cursor: default;
+  text-decoration: none;
+}
+
+.two-factor-footer {
+  background: var(--page-color);
+  border-top: 1px solid var(--border-color);
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--sub-text-color);
+}
+
+.two-factor-footer button {
+  background: none;
+  border: none;
+  color: var(--sub-text-color);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+
+.two-factor-footer button:hover {
+  color: var(--text-color);
+}

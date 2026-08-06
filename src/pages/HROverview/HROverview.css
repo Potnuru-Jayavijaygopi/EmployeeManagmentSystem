@@ -1,0 +1,32 @@
+.hr-overview-container {
+  padding: 0;
+}
+
+.tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.bg-success-light { background-color: #dcfce7 !important; }
+.bg-blue-light { background-color: #eff6ff !important; }
+.text-blue { color: #3b82f6 !important; }
+.border-blue { border-color: #3b82f6 !important; }
+.bg-danger-light { background-color: #fee2e2 !important; }
+.text-danger { color: #ef4444 !important; }
+
+.btn-blue-light {
+  background-color: #eff6ff;
+}
+.btn-blue-light:hover {
+  background-color: #dbeafe;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.avatar-lg {
+  font-weight: bold;
+}

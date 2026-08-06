@@ -1,0 +1,14 @@
+.pagination-container {
+  border-color: var(--border-color) !important;
+}
+.pagination-info {
+  font-size: 0.875rem;
+}
+.pagination-btn {
+  width: 32px;
+  height: 32px;
+}
+.pagination-current {
+  font-size: 0.875rem;
+  font-weight: 500;
+}

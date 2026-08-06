@@ -1,0 +1,20 @@
+.org-section {
+  background: radial-gradient(70.71% 70.71% at 50% 50%, rgba(26, 107, 234, 0.08) 0%, rgba(26, 107, 234, 0) 70%);
+
+  width: 100%;
+}
+
+.org-section-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0B132B; 
+  margin-bottom: 1rem;
+}
+
+.org-section-subtitle {
+  font-size: 1.1rem;
+  color: #6B7280;
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.6;
+}

@@ -1,0 +1,66 @@
+
+
+
+.lms-min-h-screen { min-height: 100vh; }
+.lms-bg-gray { background-color: #F9FAFB; }
+.lms-bg-gray-2 { background-color: #F3F4F6; }
+
+
+.lms-radius-sm { border-radius: 4px; }
+.lms-radius-md { border-radius: 6px; }
+.lms-radius-lg { border-radius: 8px; }
+.lms-radius-xl { border-radius: 12px; }
+.lms-radius-2xl { border-radius: 16px; }
+.lms-radius-top { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.lms-radius-bottom { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+
+
+.lms-w-sidebar { width: 280px; }
+.lms-h-sidebar { height: 100vh; }
+.lms-w-card { width: 320px; }
+.lms-icon-sm { width: 24px; height: 24px; }
+.lms-icon-md { width: 32px; height: 32px; }
+.lms-icon-lg { width: 48px; height: 48px; }
+.lms-icon-xl { width: 56px; height: 56px; }
+.w-px { width: 1px; }
+
+
+.lms-font-xs, .lms-text-xs { font-size: 0.65rem; }
+.lms-font-sm, .lms-text-sm { font-size: 0.75rem; }
+.lms-font-md, .lms-text-md { font-size: 0.85rem; }
+.lms-font-lg { font-size: 1.1rem; }
+.lms-font-xl { font-size: 1.25rem; }
+.lms-font-2xl { font-size: 1.5rem; }
+.lms-font-3xl { font-size: 2.5rem; }
+.lms-tracking-wide { letter-spacing: 0.05em; }
+.lms-text-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+
+.lms-progress-track { height: 6px; }
+.lms-progress-label { width: 36px; }
+
+
+.lms-search-input { min-width: 300px; }
+.lms-select-input { width: 130px; }
+.lms-stat-card { min-width: 200px; }
+.lms-alert-card { min-width: 250px; border-color: transparent; }
+
+
+.lms-overlay { background-color: rgba(0, 0, 0, 0.4); z-index: 1050; }
+.lms-modal-overlay { background-color: rgba(0, 0, 0, 0.4); z-index: 1050; }
+.lms-modal-container { width: 100%; max-width: 600px; max-height: 90vh; }
+.lms-modal-container-lg { width: 100%; max-width: 800px; max-height: 90vh; }
+.lms-max-h-200 { max-height: 200px; overflow-y: auto; }
+.lms-min-h-60 { min-height: 60px; }
+.lms-emp-initials { width: 28px; height: 28px; font-size: 0.7rem; }
+
+
+.lms-border-success-top { border: 4px solid #10B981; border-top-color: #E5E7EB; }
+
+
+.lms-dropzone { cursor: pointer; border: 2px dashed var(--bs-primary); }
+.lms-dropzone-blue { border-color: #3B82F6; }
+
+
+.lms-hover-bg:hover { background-color: #F3F4F6 !important; }
+.lms-cursor-pointer { cursor: pointer; }

@@ -1,0 +1,366 @@
+.onboarding-section {
+  background-color: #FAFAFC;
+  overflow: visible;
+}
+
+.onboarding-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: rgba(250, 250, 252, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.onboarding-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #2563EB;
+  background-color: #EFF6FF;
+  padding: 0.4rem 1rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+}
+
+.onboarding-title {
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-header-desc {
+  font-size: 1.05rem;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+
+.onboarding-progress-container {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  height: 60px;
+}
+
+.progress-bar-background {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #E2E8F0;
+  z-index: 1;
+}
+
+.progress-bar-fill {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  height: 2px;
+  background-color: #2563EB;
+  z-index: 2;
+  transition: width 0.5s ease;
+}
+
+.progress-steps {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  z-index: 3;
+}
+
+.progress-step-item {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.progress-step-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: white;
+  border: 2px solid #E2E8F0;
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  transition: all 0.4s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.progress-step-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94A3B8;
+  transition: all 0.4s ease;
+}
+
+.progress-step-item.active .progress-step-circle {
+  background-color: #2563EB;
+  border-color: #2563EB;
+  color: white;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.progress-step-item.active .progress-step-label {
+  color: #2563EB;
+}
+
+
+.onboarding-step-row {
+  position: relative;
+  margin-bottom: 6rem;
+  z-index: 2;
+  transition: all 0.6s ease;
+}
+
+
+.onboarding-card {
+  background: white;
+  border-radius: 1.25rem;
+  border: 1px solid #F1F5F9;
+  border-top: 3px solid transparent;
+  position: relative;
+  transition: all 0.4s ease;
+}
+
+.onboarding-card.is-current {
+  border-top: 3px solid #2563EB;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+}
+
+.onboarding-card-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.badge-active {
+  background-color: #2563EB;
+  color: white;
+}
+
+.badge-inactive {
+  background-color: #EFF6FF;
+  color: #2563EB;
+}
+
+.onboarding-card-desc {
+  font-size: 1.05rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.checklist-text {
+  font-size: 0.95rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+
+.onboarding-number-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 5;
+  gap: 1.5rem;
+}
+
+.onboarding-number-indicator.on-right {
+  right: -100px;
+}
+
+.onboarding-number-indicator.on-left {
+  left: -100px;
+  flex-direction: row-reverse;
+}
+
+.onboarding-path-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 3;
+  transition: all 0.4s ease;
+}
+
+.onboarding-connector-line {
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 2px;
+  z-index: 2;
+  transition: background-color 0.4s ease;
+}
+
+.onboarding-connector-line.on-right {
+  right: -40px;
+}
+
+.onboarding-connector-line.on-left {
+  left: -40px;
+}
+
+.onboarding-big-number {
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: color 0.4s ease;
+}
+
+.text-primary-active {
+  color: #2563EB;
+}
+
+.text-gray-inactive {
+  color: #DBEAFE;
+}
+
+
+.snake-line-vertical-in,
+.snake-line-vertical-out,
+.snake-line-horizontal {
+  position: absolute;
+  z-index: 1;
+  transition: background-color 0.5s ease;
+}
+
+.bg-path-active {
+  background-color: #2563EB;
+}
+
+.bg-path-inactive {
+  background-color: #E2E8F0;
+}
+
+
+.snake-line-vertical-in {
+  width: 2px;
+  top: -3rem;
+
+  height: calc(50% + 3rem);
+}
+
+.snake-line-vertical-in.on-right {
+  right: -46px;
+}
+
+.snake-line-vertical-in.on-left {
+  left: -46px;
+}
+
+
+.snake-line-vertical-out {
+  width: 2px;
+  top: 50%;
+  height: calc(50% + 3rem);
+}
+
+.snake-line-vertical-out.on-right {
+  right: -46px;
+}
+
+.snake-line-vertical-out.on-left {
+  left: -46px;
+}
+
+
+.snake-line-horizontal {
+  height: 2px;
+  top: calc(100% + 3rem);
+  left: -46px;
+  right: -46px;
+}
+
+
+.onboarding-number-indicator.on-right {
+  right: -120px;
+}
+
+
+.onboarding-number-indicator.on-left {
+  left: -120px;
+}
+
+
+
+
+.dot-container {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  z-index: 5;
+}
+
+.dot-container.on-right {
+  right: -53px;
+}
+
+.dot-container.on-left {
+  left: -53px;
+}
+
+.dot-inner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: white;
+  border: 3px solid #E2E8F0;
+  transition: border-color 0.4s ease;
+}
+
+.dot-inner.active {
+  border-color: #2563EB;
+}
+
+.big-number-container {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.big-number-container.on-right {
+  right: -120px;
+}
+
+.big-number-container.on-left {
+  left: -120px;
+}
+
+
+@media (max-width: 1200px) {
+
+  .snake-line-vertical-in,
+  .snake-line-vertical-out,
+  .snake-line-horizontal,
+  .onboarding-connector-line,
+  .dot-container,
+  .big-number-container {
+    display: none;
+  }
+
+  .onboarding-step-row {
+    margin-bottom: 3rem;
+  }
+}

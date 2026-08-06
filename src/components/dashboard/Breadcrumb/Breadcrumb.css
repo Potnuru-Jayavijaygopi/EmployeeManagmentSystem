@@ -1,0 +1,26 @@
+.dashboard-breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #94A3B8;
+  margin-bottom: 0.75rem;
+}
+
+.breadcrumb-item {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item:hover {
+  color: #0F172A;
+}
+
+.breadcrumb-item.active {
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.breadcrumb-separator {
+  margin: 0 0.5rem;
+  opacity: 0.6;
+}

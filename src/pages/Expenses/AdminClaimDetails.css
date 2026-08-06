@@ -1,0 +1,18 @@
+.admin-claim-details .timeline-container {
+  padding-left: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.admin-claim-details .timeline-item .timeline-line {
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -24px;
+  width: 2px;
+  background-color: #e5e7eb;
+  z-index: 1;
+}
+
+.admin-claim-details .timeline-item:last-child .timeline-line {
+  display: none;
+}

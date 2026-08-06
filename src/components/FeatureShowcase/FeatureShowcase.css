@@ -1,0 +1,148 @@
+
+
+.showcase-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.showcase-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.showcase-subtitle {
+  font-size: 1.05rem;
+  color: #64748B;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+
+.feature-block {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.feature-block:last-child {
+  border-bottom: none;
+}
+
+
+.feature-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.feature-block-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.feature-block-desc {
+  font-size: 1.05rem;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+
+.feature-list {
+  border-top: 1px solid #E2E8F0;
+}
+
+.feature-list-item {
+
+
+  border-bottom: 1px solid  rgba(156, 163, 175, 1);
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+
+.feature-metric {
+  margin-top: 2rem;
+}
+
+.metric-label {
+  font-size: 0.95rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 1.05rem;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.metric-progress-bg {
+  width: 100%;
+  height: 8px;
+  background-color: #E2E8F0;
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.metric-progress-bar {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 1s ease-in-out;
+}
+
+
+.text-green {
+  color: #10B981 !important;
+}
+
+.bg-green {
+  background-color: #10B981 !important;
+}
+
+.bg-green-light {
+  background-color: #ECFDF5 !important;
+}
+
+.text-blue {
+  color: #3B82F6 !important;
+}
+
+.bg-blue {
+  background-color: #3B82F6 !important;
+}
+
+.bg-blue-light {
+  background-color: #EFF6FF !important;
+}
+
+.text-purple {
+  color: #A855F7 !important;
+}
+
+.bg-purple {
+  background-color: #A855F7 !important;
+}
+
+.bg-purple-light {
+  background-color: #FAF5FF !important;
+}
+
+
+
+.feature-image-wrapper img {
+  border-radius: 12px;
+}
+
+@media (max-width: 991px) {
+  .feature-block-title {
+    font-size: 1.25rem;
+  }
+}

@@ -1,0 +1,67 @@
+export const expensesClaims = [
+  { id: 1, name: 'Riya Sharma', dept: 'Engineering', initials: 'RS', color: 'primary', amount: '₹4,250', category: 'Travel', date: '10 Apr 2025', desc: 'Flight to Bengaluru for client meeting', receiptType: 'PDF', status: 'Under Review' },
+  { id: 2, name: 'Meera Iyer', dept: 'Finance', initials: 'MI', color: 'blue', amount: '₹2,200', category: 'Food', date: '9 Apr 2025', desc: 'Team dinner for quarterly close', receiptType: 'JPG', status: 'Under Review' },
+  { id: 3, name: 'Sneha Patel', dept: 'HR', initials: 'SP', color: 'blue', amount: '₹12,000', category: 'Accommodation', date: '8 Apr 2025', desc: 'Hotel stay - 3 nights for HR conference', receiptType: 'PDF', status: 'Approved' },
+  { id: 4, name: 'Kiran Rao', dept: 'Sales', initials: 'KR', color: 'success', amount: '₹3,500', category: 'Training', date: '5 Apr 2025', desc: 'Online course on sales techniques', receiptType: null, status: 'Rejected' },
+  { id: 5, name: 'Arjun Nair', dept: 'Design', initials: 'AN', color: 'blue', amount: '₹1,800', category: 'Food', date: '12 Apr 2025', desc: 'Team lunch during sprint planning', receiptType: 'JPG', status: 'Submitted' },
+  { id: 6, name: 'Devraj Singh', dept: 'Engineering', initials: 'DS', color: 'blue', amount: '₹9,200', category: 'Travel', date: '11 Apr 2025', desc: 'Train + cab for on-site deployment', receiptType: 'PDF', status: 'Submitted' },
+  { id: 7, name: 'Priya Mehta', dept: 'Marketing', initials: 'PM', color: 'purple', amount: '₹680', category: 'Office Supplies', date: '14 Apr 2025', desc: 'Stationery and markers for workshop', receiptType: 'JPG', status: 'Reimbursed' },
+  { id: 8, name: 'Amit Kumar', dept: 'Operations', initials: 'AK', color: 'warning', amount: '₹1,500', category: 'Communication', date: '15 Apr 2025', desc: 'Monthly internet allowance', receiptType: 'PDF', status: 'Submitted' },
+];
+
+export const expenseCategories = [
+  {
+    id: 'food',
+    title: 'Food & Meals',
+    iconType: 'food',
+    budgetLimit: '₹1,000.00',
+    categoryTag: 'Food',
+    receiptsReq: true,
+    approvalReq: true,
+  },
+  {
+    id: 'travel',
+    title: 'Travel Expenses',
+    iconType: 'travel',
+    budgetLimit: '₹5,000.00',
+    categoryTag: 'Travel',
+    receiptsReq: false,
+    approvalReq: true,
+  },
+  {
+    id: 'client',
+    title: 'Client Entertainment',
+    iconType: 'client',
+    budgetLimit: '₹2,000.00',
+    categoryTag: 'Client Ent.',
+    receiptsReq: false,
+    approvalReq: true,
+  },
+  {
+    id: 'communication',
+    title: 'Communication',
+    iconType: 'communication',
+    budgetLimit: '₹500.00',
+    categoryTag: 'Comms',
+    receiptsReq: true,
+    approvalReq: true,
+  },
+  {
+    id: 'hotel',
+    title: 'Hotel & Accommodation',
+    iconType: 'hotel',
+    budgetLimit: '₹8,000.00',
+    categoryTag: 'Hotel',
+    receiptsReq: true,
+    approvalReq: true,
+  },
+  {
+    id: 'office',
+    title: 'Office Supplies',
+    iconType: 'office',
+    budgetLimit: '₹1,500.00',
+    categoryTag: 'Office',
+    receiptsReq: true,
+    approvalReq: true,
+  }
+];

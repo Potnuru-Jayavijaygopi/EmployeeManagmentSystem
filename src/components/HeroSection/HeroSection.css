@@ -1,0 +1,123 @@
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('../assets/fonts/SFPRODISPLAYREGULAR.OTF') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+.new-hero-section {
+  background-image: url(./heroBG.png);
+  min-height: 100vh;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.new-hero-section::before {
+  content: '';
+  position: absolute;
+  top: 40%;
+  left: -10%;
+  right: -10%;
+  height: 200px;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  box-shadow: 0 -20px 0 -19px rgba(255, 255, 255, 0.1), 0 -40px 0 -39px rgba(255, 255, 255, 0.05);
+  z-index: 0;
+  transform: rotate(-5deg);
+}
+
+.new-hero-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6rem;
+  padding-bottom: 5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.new-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  padding: 0.35rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+  color: rgba(255, 255, 255, 1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.new-hero-title {
+  font-family: "SF Pro Display", "SF Pro", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 4rem;
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.new-hero-subtitle {
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 680px;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+}
+
+.new-hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 4rem;
+}
+
+.new-hero-btn-white {
+  background-color: white !important;
+  color: #2563EB !important;
+  border-color: white !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 2rem !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+.new-hero-btn-white:hover {
+  background-color: #F8FAFC !important;
+}
+
+.new-hero-btn-blue {
+  background-color: #2563EB !important;
+  border-color: #2563EB !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 2rem !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39) !important;
+}
+
+.new-hero-btn-blue:hover {
+  background-color: #1D4ED8 !important;
+}
+
+.new-hero-image-wrapper {
+  width: 100%;
+
+  margin: 0 auto;
+}
+
+.new-hero-image {
+  width: 100%;
+  height: auto;
+
+}

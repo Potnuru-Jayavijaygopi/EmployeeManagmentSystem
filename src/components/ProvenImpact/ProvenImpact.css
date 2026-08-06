@@ -1,0 +1,116 @@
+.proven-impact-section {
+  background-color: #FFFFFF;
+}
+
+
+.impact-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.impact-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+}
+
+.impact-subtitle {
+  font-size: 1.05rem;
+  color: #64748B;
+  max-width: 650px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+
+.impact-card {
+  background: white;
+  border: 1px solid #F1F5F9;
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px -15px rgba(0,0,0,0.03);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.impact-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
+}
+
+
+.impact-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.impact-metric-value {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+
+.impact-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.4;
+}
+
+.impact-card-desc {
+  font-size: 0.9rem;
+  color: #64748B;
+  line-height: 1.6;
+  flex-grow: 1;
+}
+
+
+.impact-trend-pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  background-color: #ECFDF5;
+  color: #10B981;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 100px;
+}
+
+
+.text-green { color: #10B981 !important; }
+.bg-green-light { background-color: #ECFDF5 !important; }
+
+.text-blue { color: #3B82F6 !important; }
+.bg-blue-light { background-color: #EFF6FF !important; }
+
+.text-purple { color: #A855F7 !important; }
+.bg-purple-light { background-color: #FAF5FF !important; }
+
+.text-orange { color: #F59E0B !important; }
+.bg-orange-light { background-color: #FEF3C7 !important; }
+
+.text-red { color: #E11D48 !important; }
+.bg-red-light { background-color: #FFE4E6 !important; }
+
+
+@media (max-width: 991px) {
+  .impact-title {
+    font-size: 2rem;
+  }
+  .impact-metric-value {
+    font-size: 3rem;
+  }
+}
