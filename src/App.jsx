@@ -4,32 +4,10 @@ import PortalLayout from "./components/layout/PortalLayout";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Announcements from "./pages/Announcements";
-import Tasks from "./pages/Tasks";
-import Attendance from "./pages/Attendance";
-import AdminAttendance from "./pages/Attendance/AdminAttendance";
 import Leave from "./pages/Leave";
 import AdminLeave from "./pages/Leave/AdminLeave";
 import Chat from "./pages/Chat";
 import AdminChat from "./pages/Chat/AdminChat";
-import HROverview from "./pages/HROverview";
-import Payroll from "./pages/Payroll";
-import AdminPayroll from "./pages/Payroll/AdminPayroll";
-import Expenses from "./pages/Expenses";
-import AdminExpenses from "./pages/Expenses/AdminExpenses";
-import Performance from "./pages/Performance";
-import Learning from "./pages/Learning";
-import Documents from "./pages/Documents";
-import Analytics from "./pages/Analytics";
-import Compliance from "./pages/Compliance";
-import Projects from "./pages/Projects";
-import EmployeeDirectory from "./pages/EmployeeDirectory";
-import Plans from "./pages/Plans";
-import Logs from "./pages/Logs";
-import Security from "./pages/Security";
-import Teams from "./pages/Teams";
-import AdminTeams from "./pages/AdminTeams";
 import Contact from "./pages/Contact/Contact";
 import PricingPlans from "./components/PricingPlans";
 import FreeTrial from "./pages/FreeTrial/FreeTrial";
@@ -38,6 +16,13 @@ import HrLandingPage from "./pages/HRLanding/HrLandingPage";
 import ManagerPortalLandingPage from "./pages/ManagerPortalLandingPage/ManagerPortalLandingPage";
 import PageTitleUpdater from "./components/PageTitleUpdater/PageTitleUpdater";
 import { AuthProvider } from "./context/AuthContext";
+
+const Placeholder = ({ name }) => (
+  <div style={{ padding: "2rem", textTransform: "capitalize", textAlign: "center", color: "#6b7280" }}>
+    <h2>{name} Module</h2>
+    <p>This module is assigned to another team branch.</p>
+  </div>
+);
 
 function App() {
   return (
@@ -55,90 +40,90 @@ function App() {
         <Route path="/hr-landing-page" element={<HrLandingPage />} />
         <Route path="/manager-portal-landing-page" element={<ManagerPortalLandingPage />} />
         <Route path="/admin" element={<PortalLayout role="admin" />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard role="admin" />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="attendance" element={<AdminAttendance />} />
+          <Route index element={<Navigate to="leave" replace />} />
+          <Route path="dashboard" element={<Placeholder name="Dashboard" />} />
+          <Route path="announcements" element={<Placeholder name="Announcements" />} />
+          <Route path="tasks" element={<Placeholder name="Tasks" />} />
+          <Route path="attendance" element={<Placeholder name="Attendance" />} />
           <Route path="leave" element={<AdminLeave />} />
           <Route path="chat" element={<AdminChat />} />
-          <Route path="hr-overview" element={<HROverview />} />
-          <Route path="payroll" element={<AdminPayroll />} />
-          <Route path="expenses" element={<AdminExpenses />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="learning" element={<Learning />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="compliance" element={<Compliance />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="plans" element={<Plans />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="security" element={<Security />} />
-          <Route path="teams" element={<AdminTeams />} />
-          <Route path="employees" element={<EmployeeDirectory />} />
+          <Route path="hr-overview" element={<Placeholder name="HR Overview" />} />
+          <Route path="payroll" element={<Placeholder name="Payroll" />} />
+          <Route path="expenses" element={<Placeholder name="Expenses" />} />
+          <Route path="performance" element={<Placeholder name="Performance" />} />
+          <Route path="learning" element={<Placeholder name="Learning" />} />
+          <Route path="documents" element={<Placeholder name="Documents" />} />
+          <Route path="analytics" element={<Placeholder name="Analytics" />} />
+          <Route path="compliance" element={<Placeholder name="Compliance" />} />
+          <Route path="projects" element={<Placeholder name="Projects" />} />
+          <Route path="plans" element={<Placeholder name="Plans" />} />
+          <Route path="logs" element={<Placeholder name="Logs" />} />
+          <Route path="security" element={<Placeholder name="Security" />} />
+          <Route path="teams" element={<Placeholder name="Teams" />} />
+          <Route path="employees" element={<Placeholder name="Employees" />} />
         </Route>
 
         <Route path="/hr" element={<PortalLayout role="hr" />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard role="hr" />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="attendance" element={<AdminAttendance />} />
+          <Route index element={<Navigate to="leave" replace />} />
+          <Route path="dashboard" element={<Placeholder name="Dashboard" />} />
+          <Route path="announcements" element={<Placeholder name="Announcements" />} />
+          <Route path="attendance" element={<Placeholder name="Attendance" />} />
           <Route path="leave" element={<AdminLeave />} />
           <Route path="chat" element={<AdminChat />} />
-          <Route path="payroll" element={<AdminPayroll />} />
-          <Route path="expenses" element={<AdminExpenses />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="compliance" element={<Compliance />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="plans" element={<Plans />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="security" element={<Security />} />
-          <Route path="teams" element={<AdminTeams />} />
-          <Route path="employees" element={<EmployeeDirectory />} />
+          <Route path="payroll" element={<Placeholder name="Payroll" />} />
+          <Route path="expenses" element={<Placeholder name="Expenses" />} />
+          <Route path="performance" element={<Placeholder name="Performance" />} />
+          <Route path="documents" element={<Placeholder name="Documents" />} />
+          <Route path="analytics" element={<Placeholder name="Analytics" />} />
+          <Route path="compliance" element={<Placeholder name="Compliance" />} />
+          <Route path="projects" element={<Placeholder name="Projects" />} />
+          <Route path="plans" element={<Placeholder name="Plans" />} />
+          <Route path="logs" element={<Placeholder name="Logs" />} />
+          <Route path="security" element={<Placeholder name="Security" />} />
+          <Route path="teams" element={<Placeholder name="Teams" />} />
+          <Route path="employees" element={<Placeholder name="Employees" />} />
         </Route>
 
         <Route path="/manager" element={<PortalLayout role="manager" />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard role="manager" />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="attendance" element={<AdminAttendance />} />
+          <Route index element={<Navigate to="leave" replace />} />
+          <Route path="dashboard" element={<Placeholder name="Dashboard" />} />
+          <Route path="announcements" element={<Placeholder name="Announcements" />} />
+          <Route path="tasks" element={<Placeholder name="Tasks" />} />
+          <Route path="attendance" element={<Placeholder name="Attendance" />} />
           <Route path="leave" element={<AdminLeave />} />
           <Route path="chat" element={<AdminChat />} />
-          <Route path="payroll" element={<Payroll />} />
-          <Route path="expenses" element={<AdminExpenses />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="learning" element={<Learning />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="compliance" element={<Compliance />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="teams" element={<Teams role="manager" />} />
-          <Route path="employees" element={<EmployeeDirectory />} />
-          <Route path="plans" element={<Plans />} />
+          <Route path="payroll" element={<Placeholder name="Payroll" />} />
+          <Route path="expenses" element={<Placeholder name="Expenses" />} />
+          <Route path="performance" element={<Placeholder name="Performance" />} />
+          <Route path="learning" element={<Placeholder name="Learning" />} />
+          <Route path="documents" element={<Placeholder name="Documents" />} />
+          <Route path="analytics" element={<Placeholder name="Analytics" />} />
+          <Route path="compliance" element={<Placeholder name="Compliance" />} />
+          <Route path="projects" element={<Placeholder name="Projects" />} />
+          <Route path="teams" element={<Placeholder name="Teams" />} />
+          <Route path="employees" element={<Placeholder name="Employees" />} />
+          <Route path="plans" element={<Placeholder name="Plans" />} />
         </Route>
 
         <Route path="/employee" element={<PortalLayout role="employee" />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard role="employee" />} />
-          <Route path="announcements" element={<Announcements />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="attendance" element={<Attendance />} />
+          <Route index element={<Navigate to="leave" replace />} />
+          <Route path="dashboard" element={<Placeholder name="Dashboard" />} />
+          <Route path="announcements" element={<Placeholder name="Announcements" />} />
+          <Route path="tasks" element={<Placeholder name="Tasks" />} />
+          <Route path="attendance" element={<Placeholder name="Attendance" />} />
           <Route path="leave" element={<Leave />} />
           <Route path="chat" element={<Chat />} />
-          <Route path="hr-overview" element={<HROverview />} />
-          <Route path="payroll" element={<Payroll />} />
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="learning" element={<Learning />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="compliance" element={<Compliance />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="teams" element={<Teams role="employee" />} />
-          <Route path="plans" element={<Plans />} />
+          <Route path="hr-overview" element={<Placeholder name="HR Overview" />} />
+          <Route path="payroll" element={<Placeholder name="Payroll" />} />
+          <Route path="expenses" element={<Placeholder name="Expenses" />} />
+          <Route path="performance" element={<Placeholder name="Performance" />} />
+          <Route path="learning" element={<Placeholder name="Learning" />} />
+          <Route path="documents" element={<Placeholder name="Documents" />} />
+          <Route path="analytics" element={<Placeholder name="Analytics" />} />
+          <Route path="compliance" element={<Placeholder name="Compliance" />} />
+          <Route path="projects" element={<Placeholder name="Projects" />} />
+          <Route path="teams" element={<Placeholder name="Teams" />} />
+          <Route path="plans" element={<Placeholder name="Plans" />} />
         </Route>
       </Routes>
     </Router>
