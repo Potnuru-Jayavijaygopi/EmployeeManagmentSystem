@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import {
   Info,
@@ -22,7 +22,8 @@ import {
 import "./Teams.css";
 import "../AdminTeams/AdminTeams.css";
 import Button from "../../components/common/Button";
-import { teamsData } from "../../data/teamsData";
+import { teamsData as initialTeamsData } from "../../data/teamsData";
+import { employeeService, withFallback } from "../../services";
 
 const Teams = ({ role = "employee" }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -31,6 +32,17 @@ const Teams = ({ role = "employee" }) => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [memberView, setMemberView] = useState("table");
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [teams, setTeams] = useState(initialTeamsData);
+
+  useEffect(() => {
+    const fetchTeamsData = async () => {
+      const apiTeams = await withFallback(employeeService.getTeams(), initialTeamsData);
+      setTeams(Array.isArray(apiTeams) ? apiTeams : apiTeams.results || initialTeamsData);
+    };
+    fetchTeamsData();
+  }, []);
+
+  const teamsData = teams;
 
   const leadTeams = teamsData.filter((t) => t.isLead);
   const memberTeams = teamsData.filter((t) => !t.isLead);

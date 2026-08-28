@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import {
@@ -14,9 +14,22 @@ import {
 } from "lucide-react";
 import "./Payroll.css";
 import Button from "../../components/common/Button";
+import { payrollService, withFallback } from "../../services";
 
 const Payroll = ({ onTabChange, onNavigateHome }) => {
   const [activeTab, setActiveTab] = useState("Current");
+  const [payslips, setPayslips] = useState([]);
+  const [salaryStructures, setSalaryStructures] = useState([]);
+
+  useEffect(() => {
+    const fetchPayroll = async () => {
+      const slipsData = await withFallback(payrollService.getPayslips(), []);
+      const structData = await withFallback(payrollService.getSalaryStructures(), []);
+      setPayslips(slipsData);
+      setSalaryStructures(structData);
+    };
+    fetchPayroll();
+  }, []);
 
   return (
     <>

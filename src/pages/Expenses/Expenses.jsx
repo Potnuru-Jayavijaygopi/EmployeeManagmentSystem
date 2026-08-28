@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
@@ -9,8 +9,9 @@ import {
   UploadCloud, FileText, Download, Calendar
 } from 'lucide-react';
 import '../Expenses/AdminExpenses.css'; 
+import { expenseService, withFallback } from '../../services';
 
-const myClaims = [
+const initialClaims = [
   { id: 1, title: 'Travelwl', category: 'Travel Expenses', amount: '₹1,000.00', date: '01 Jan 2026', status: 'Approved' },
   { id: 2, title: 'sdf 2', category: 'Communication', amount: '₹1,000.00', date: '01 Jan 2026', status: 'Draft' },
   { id: 3, title: 'Travel', category: 'Travel Expenses', amount: '₹1,000.00', date: '01 Jan 2026', status: 'Approved' },
@@ -20,7 +21,7 @@ const myClaims = [
   { id: 7, title: 'Hotel Stay – Pune', category: 'Hotel & Accommodation', amount: '₹1,000.00', date: '01 Jan 2026', status: 'Reimbursed' },
 ];
 
-const expenseCategories = [
+const initialCategories = [
   { id: 'food', title: 'Food & Meals', icon: Utensils, iconClass: 'food', max: '₹1,000.00', type: 'Food', receipts: true, approval: true },
   { id: 'travel', title: 'Travel Expenses', icon: Plane, iconClass: 'travel', max: '₹5,000.00', type: 'Travel', receipts: false, approval: true },
   { id: 'client', title: 'Client Entertainment', icon: Users, iconClass: 'client', max: '₹2,000.00', type: 'Client Ent.', receipts: false, approval: true },
@@ -33,6 +34,21 @@ const Expenses = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalType, setModalType] = useState(null); 
   const [isFileSelected, setIsFileSelected] = useState(false);
+  const [claims, setClaims] = useState(initialClaims);
+  const [categories, setCategories] = useState(initialCategories);
+
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      const claimsData = await withFallback(expenseService.getClaims(), initialClaims);
+      const catData = await withFallback(expenseService.getCategories(), initialCategories);
+      setClaims(Array.isArray(claimsData) ? claimsData : claimsData.results || initialClaims);
+      if (Array.isArray(catData) && catData.length > 0) setCategories(catData);
+    };
+    fetchExpenses();
+  }, []);
+
+  const myClaims = claims;
+  const expenseCategories = categories;
 
   const getStatusColor = (status) => {
     switch(status) {

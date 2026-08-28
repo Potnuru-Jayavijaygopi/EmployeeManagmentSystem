@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import {
@@ -22,11 +22,20 @@ import "./Announcements.css";
 import { initialAnnouncements } from "../../data/intialAnnouncments";
 import Button from "../../components/common/Button";
 import { filters, stats } from "../../data/announcmentsData";
+import { dashboardService, withFallback } from "../../services";
 
 const Announcements = ({ onTabChange, onNavigateHome }) => {
   const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [activeFilter, setActiveFilter] = useState("All");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      const apiData = await withFallback(dashboardService.getAnnouncements(), initialAnnouncements);
+      setAnnouncements(Array.isArray(apiData) ? apiData : apiData.results || initialAnnouncements);
+    };
+    fetchAnnouncements();
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
@@ -267,7 +276,7 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
                 (a) => activeFilter === "All" || a.category === activeFilter
               )
               .map((announcement) => {
-                const Icon = announcement.icon;
+                const IconComponent = (typeof announcement.icon === 'function' || typeof announcement.icon === 'object') ? announcement.icon : AlertCircle;
                 const isUrgent = announcement.type === "urgent";
                 return (
                   <div
@@ -298,7 +307,7 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
                           : "bg-blue-light text-blue"
                       }`}
                     >
-                      <Icon size={20} />
+                      <IconComponent size={20} />
                     </div>
 
                     <div className="item-content ms-4 flex-grow-1 text-start">

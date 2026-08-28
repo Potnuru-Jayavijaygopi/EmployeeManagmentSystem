@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Zap,
   Star,
@@ -25,9 +25,7 @@ import CreateCategoryModal from "./components/modals/CreateCategoryModal";
 import PerformanceGoals from "./components/PerformanceGoals";
 import Button from '../../components/common/Button';
 import { mainTabs } from "../../data/mainTabs";
-
-
-
+import { performanceService, withFallback } from "../../services";
 
 const Performance = () => {
   const [activeMainTab, setActiveMainTab] = useState("review_cycles");
@@ -36,6 +34,18 @@ const Performance = () => {
   const [isCreateCycleModalOpen, setIsCreateCycleModalOpen] = useState(false);
   const [isCreateKPIModalOpen, setIsCreateKPIModalOpen] = useState(false);
   const [isCreateCategoryModalOpen, setIsCreateCategoryModalOpen] = useState(false);
+  const [goals, setGoals] = useState([]);
+  const [kpis, setKpis] = useState([]);
+
+  useEffect(() => {
+    const fetchPerformance = async () => {
+      const goalsData = await withFallback(performanceService.getGoals(), []);
+      const kpisData = await withFallback(performanceService.getKPIs(), []);
+      setGoals(goalsData);
+      setKpis(kpisData);
+    };
+    fetchPerformance();
+  }, []);
 
   return (
     <div

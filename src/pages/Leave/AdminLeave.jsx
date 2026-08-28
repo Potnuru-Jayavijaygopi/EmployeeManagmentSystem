@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import Button from "../../components/common/Button";
 import {
@@ -20,16 +20,28 @@ import {
 import "./AdminLeave.css";
 
 import {
-  pendingLeaves,
+  pendingLeaves as initialPendingLeaves,
   allLeaves,
   leaveHistory,
   leaveBalances,
 } from "../../data/adminLeaveData";
+import { leaveService, withFallback } from "../../services";
 
 const AdminLeave = () => {
   const [activeTab, setActiveTab] = useState("Applications");
   const [activeSubTab, setActiveSubTab] = useState("All Pending");
   const [activeActionMenu, setActiveActionMenu] = useState(null);
+  const [adminLeaves, setAdminLeaves] = useState(initialPendingLeaves);
+
+  useEffect(() => {
+    const fetchAdminLeaves = async () => {
+      const leavesData = await withFallback(leaveService.getLeaves(), initialPendingLeaves);
+      setAdminLeaves(Array.isArray(leavesData) ? leavesData : leavesData.results || initialPendingLeaves);
+    };
+    fetchAdminLeaves();
+  }, []);
+
+  const pendingLeaves = adminLeaves;
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);

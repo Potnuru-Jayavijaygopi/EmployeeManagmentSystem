@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Download, RefreshCw, ChevronDown, Calendar, Search, Search as SearchIcon, 
   ClipboardList, ChevronLeft, ChevronRight,
@@ -8,9 +8,19 @@ import { Link } from 'react-router-dom';
 import './Logs.css';
 import { activityLogsData, auditTrailData, userSessionsData, recentErrorsData } from '../../data/logsConstants';
 import Button from '../../components/common/Button';
+import { securityService, withFallback } from '../../services';
 
 const Logs = () => {
   const [activeTab, setActiveTab] = useState('Activity Logs');
+  const [logs, setLogs] = useState([]);
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const activityData = await withFallback(securityService.getActivityLogs(), activityLogsData);
+      setLogs(activityData);
+    };
+    fetchLogs();
+  }, []);
   const getActionBadgeClass = (action) => {
     switch (action) {
       case 'READ': return 'read';

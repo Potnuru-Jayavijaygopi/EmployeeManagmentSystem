@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import Button from '../../components/common/Button';
 import { 
@@ -7,14 +7,26 @@ import {
   Utensils, Plane, Users, Phone, Building2, PenTool
 } from 'lucide-react';
 import './AdminExpenses.css';
-import { expensesClaims, expenseCategories } from '../../data/adminExpensesData';
+import { expensesClaims as initialExpensesClaims, expenseCategories } from '../../data/adminExpensesData';
 import AdminClaimDetails from './AdminClaimDetails';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
+import { expenseService, withFallback } from '../../services';
 
 const AdminExpenses = () => {
   const [activeTab, setActiveTab] = useState('Under Review');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClaim, setSelectedClaim] = useState(null);
+  const [adminClaims, setAdminClaims] = useState(initialExpensesClaims);
+
+  useEffect(() => {
+    const fetchAdminClaims = async () => {
+      const claimsData = await withFallback(expenseService.getClaims(), initialExpensesClaims);
+      setAdminClaims(Array.isArray(claimsData) ? claimsData : claimsData.results || initialExpensesClaims);
+    };
+    fetchAdminClaims();
+  }, []);
+
+  const expensesClaims = adminClaims;
 
   const filteredClaims = expensesClaims.filter(claim => {
     if (activeTab !== 'All' && claim.status !== activeTab) {

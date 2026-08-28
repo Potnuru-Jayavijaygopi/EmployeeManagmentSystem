@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import StatCard from '../../components/common/StatCard/StatCard';
@@ -13,10 +13,19 @@ import './Tasks.css';
 import Button from '../../components/common/Button';
 import { initialTasks } from '../../data/initialTasks';
 import { tasksStats, taskFilters } from '../../data/tasksData';
+import { dashboardService, withFallback } from '../../services';
 
 const Tasks = ({ onTabChange, onNavigateHome }) => {
   const [tasks, setTasks] = useState(initialTasks);
   const [activeFilter, setActiveFilter] = useState('All');
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const apiTasks = await withFallback(dashboardService.getTasks(), initialTasks);
+      setTasks(Array.isArray(apiTasks) ? apiTasks : apiTasks.results || initialTasks);
+    };
+    fetchTasks();
+  }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);

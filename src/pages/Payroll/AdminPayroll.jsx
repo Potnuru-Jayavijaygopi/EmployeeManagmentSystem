@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Button from "../../components/common/Button";
 import {
@@ -37,6 +37,7 @@ import {
 import "./AdminPayroll.css";
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import { employeesData } from "../../data/employeesData";
+import { payrollService, withFallback } from "../../services";
 
 const AssignSalaryStructure = ({ onCancel }) => (
   <div className="fade-in">
@@ -4859,6 +4860,18 @@ const PayslipDistribution = () => {
 const AdminPayroll = () => {
   const [activeView, setActiveView] = useState("dashboard");
   const [selectedTheme, setSelectedTheme] = useState("ocean");
+  const [payrollRuns, setPayrollRuns] = useState([]);
+  const [salaryStructures, setSalaryStructures] = useState([]);
+
+  useEffect(() => {
+    const fetchAdminPayroll = async () => {
+      const runs = await withFallback(payrollService.getPayrollRuns(), []);
+      const structures = await withFallback(payrollService.getSalaryStructures(), []);
+      setPayrollRuns(runs);
+      setSalaryStructures(structures);
+    };
+    fetchAdminPayroll();
+  }, []);
 
   if (activeView === "create-structure")
     return (

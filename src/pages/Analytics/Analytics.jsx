@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import Button from '../../components/common/Button';
 import { 
@@ -6,12 +6,22 @@ import {
   ArrowLeft, Clock, Activity, CheckCircle, Mail, User, BookOpen
 } from 'lucide-react';
 import './Analytics.css';
+import { analyticsService, withFallback } from '../../services';
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('Quizzes'); 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      const dashboardAnalytics = await withFallback(analyticsService.getDashboardAnalytics(), null);
+      if (dashboardAnalytics) setAnalyticsData(dashboardAnalytics);
+    };
+    fetchAnalytics();
+  }, []);
 
   const resetDrillDowns = () => {
     setSelectedEmployee(null);

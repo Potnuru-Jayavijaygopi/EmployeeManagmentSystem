@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import Button from '../../components/common/Button';
 import { 
@@ -8,9 +8,10 @@ import {
 import './AdminAttendance.css';
 
 import { 
-  todaysRecords, overtimeRecords, regularizationRequests, 
+  todaysRecords as initialTodaysRecords, overtimeRecords, regularizationRequests, 
   historyRecords, generateCalendarData, absentEmployees, lateArrivals
 } from '../../data/adminAttendanceData';
+import { attendanceService, withFallback } from '../../services';
 
 const AdminAttendance = () => {
   const [activeTab, setActiveTab] = useState('Today'); 
@@ -19,6 +20,17 @@ const AdminAttendance = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [calendarData] = useState(generateCalendarData());
   const [activeActionMenu, setActiveActionMenu] = useState(null); 
+  const [attendanceData, setAttendanceData] = useState(initialTodaysRecords);
+
+  useEffect(() => {
+    const fetchAdminAttendance = async () => {
+      const records = await withFallback(attendanceService.getAttendanceRecords(), initialTodaysRecords);
+      if (Array.isArray(records) && records.length > 0) setAttendanceData(records);
+    };
+    fetchAdminAttendance();
+  }, []);
+
+  const todaysRecords = attendanceData;
   const openDrawer = (employee) => {
     setSelectedEmployee(employee);
     setIsDrawerOpen(true);

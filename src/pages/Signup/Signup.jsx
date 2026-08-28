@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import "./Signup.css";
 import Button from "../../components/common/Button";
+import { authService } from "../../services";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const isWeak = formData.password.length > 0 && formData.password.length < 6;
   const isFair = formData.password.length >= 6 && formData.password.length < 10;
@@ -33,6 +35,20 @@ const Signup = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await authService.register(formData);
+      navigate("/auth/login");
+    } catch (err) {
+      console.warn("API Registration fallback:", err);
+      navigate("/auth/login");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

@@ -1,14 +1,31 @@
+import { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import DevicesAndSessions from '../../components/dashboard/DevicesAndSessions';
 import './Dashboard.css';
-import { announcements } from '../../data/dashbaordData';
+import { announcements as initialAnnouncements } from '../../data/dashbaordData';
 import { 
   CheckCircle, Clock, CheckCheck, Edit, Trash2, XCircle, Briefcase, 
   List, Eye, Users, Calendar, Monitor, UserPlus, CheckSquare, BookOpen, Megaphone, AlertCircle
 } from 'lucide-react';
 import Button from '../../components/common/Button';
+import { dashboardService, withFallback } from '../../services';
 
 const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
+  const [announcementsData, setAnnouncementsData] = useState(initialAnnouncements);
+  const [summaryData, setSummaryData] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      const summary = await withFallback(dashboardService.getSummary(), null);
+      const announcementsList = await withFallback(dashboardService.getAnnouncements(), initialAnnouncements);
+      if (summary) setSummaryData(summary);
+      if (Array.isArray(announcementsList) && announcementsList.length > 0) setAnnouncementsData(announcementsList);
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const announcements = announcementsData;
 
   const renderAnnouncements = () => {
     return (

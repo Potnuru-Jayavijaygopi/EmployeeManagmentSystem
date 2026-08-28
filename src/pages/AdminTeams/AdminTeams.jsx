@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users,
   Building,
@@ -20,14 +20,26 @@ import {
 } from 'lucide-react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import './AdminTeams.css';
-import { allTeamsData, teamMembers } from '../../data/teamsConstants';
+import { allTeamsData as initialTeamsData, teamMembers } from '../../data/teamsConstants';
 import Button from '../../components/common/Button';
+import { employeeService, withFallback } from '../../services';
 
 const AdminTeams = () => {
+  const [teams, setTeams] = useState(initialTeamsData);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [activeTab, setActiveTab] = useState('Overview');
   const [memberView, setMemberView] = useState('table'); 
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      const apiTeams = await withFallback(employeeService.getTeams(), initialTeamsData);
+      setTeams(Array.isArray(apiTeams) ? apiTeams : apiTeams.results || initialTeamsData);
+    };
+    fetchTeams();
+  }, []);
+
+  const allTeamsData = teams;
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);

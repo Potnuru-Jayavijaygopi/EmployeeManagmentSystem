@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import FilterPills from '../../components/common/FilterPills';
@@ -6,7 +6,8 @@ import Modal from '../../components/common/Modal';
 import { Check, X, Plus, FileText } from 'lucide-react';
 import './Documents.css';
 import Button from '../../components/common/Button';
-import { filters, sharesData, tableData } from '../../data/documentsFiltersData';
+import { filters, sharesData, tableData as initialTableData } from '../../data/documentsFiltersData';
+import { documentService, withFallback } from '../../services';
 
 const Documents = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('All Documents');
@@ -16,6 +17,20 @@ const Documents = ({ onTabChange, onNavigateHome }) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [documents, setDocuments] = useState(initialTableData);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchDocs = async () => {
+      const docs = await withFallback(documentService.getDocuments(), initialTableData);
+      const cats = await withFallback(documentService.getCategories(), []);
+      if (Array.isArray(docs) && docs.length > 0) setDocuments(docs);
+      if (Array.isArray(cats)) setCategories(cats);
+    };
+    fetchDocs();
+  }, []);
+
+  const tableData = documents;
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {

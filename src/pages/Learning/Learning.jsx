@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LearningDashboard from './components/LearningDashboard';
 import CreateCourseFlow from './components/CreateCourse/CreateCourseFlow';
 import CourseDetail from './components/CourseDetail';
 import './Learning.css';
+import { lmsService, withFallback } from '../../services';
 
 const Learning = () => {
   const [view, setView] = useState('dashboard'); 
   const [selectedCourseTitle, setSelectedCourseTitle] = useState(null);
+  const [courses, setCourses] = useState([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const coursesData = await withFallback(lmsService.getCourses(), []);
+      setCourses(coursesData);
+    };
+    fetchCourses();
+  }, []);
 
   const handleCreateCourseClick = () => {
     setView('create');

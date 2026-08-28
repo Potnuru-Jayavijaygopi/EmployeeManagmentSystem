@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Folder,
   PlayCircle,
@@ -25,12 +25,26 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import "./Projects.css";
-import { projectsData } from "../../data/projectsConstants";
+import { projectsData as initialProjectsData } from "../../data/projectsConstants";
 import { MdOutlineArchive } from "react-icons/md";
 import Button from '../../components/common/Button';
+import { dashboardService, withFallback } from "../../services";
 
 const Projects = () => {
   const location = useLocation();
+  const [projectsList, setProjectsList] = useState(initialProjectsData);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const projects = await withFallback(dashboardService.getProjects(), initialProjectsData);
+      if (Array.isArray(projects) && projects.length > 0 && projects[0]?.manager) {
+        setProjectsList(projects);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  const projectsData = Array.isArray(projectsList) && projectsList.length > 0 ? projectsList : initialProjectsData;
   const isEmployee = location.pathname.startsWith("/employee");
   const [viewMode, setViewMode] = useState("list"); 
   const [selectedProject, setSelectedProject] = useState(null);
@@ -311,11 +325,11 @@ const Projects = () => {
                   <div className="pc-id-status">
                     <span className="pc-id">{proj.id}</span>
                     <span
-                      className={`pc-status ${proj.status
+                      className={`pc-status ${(proj.status || "Active")
                         .toLowerCase()
                         .replace(" ", "-")}`}
                     >
-                      <div className="dot"></div> {proj.status}
+                      <div className="dot"></div> {proj.status || "Active"}
                     </span>
                   </div>
                   <h3 className="pc-title">{proj.title}</h3>
@@ -324,9 +338,9 @@ const Projects = () => {
 
                 <div className="pc-badges">
                   <span
-                    className={`proj-badge priority-${proj.priority.toLowerCase()}`}
+                    className={`proj-badge priority-${(proj.priority || "Medium").toLowerCase()}`}
                   >
-                    {proj.priority}
+                    {proj.priority || "Medium"}
                   </span>
                   <span className="proj-badge dept">{proj.dept}</span>
                 </div>
@@ -334,23 +348,23 @@ const Projects = () => {
                 <div className="pc-user">
                   <div
                     className="pc-avatar"
-                    style={{ background: proj.manager.color }}
+                    style={{ background: proj.manager?.color || "#3b82f6" }}
                   >
-                    {proj.manager.initials}
+                    {proj.manager?.initials || "PM"}
                   </div>
                   <div className="pc-user-info">
-                    <span className="pc-user-name">{proj.manager.name}</span>
+                    <span className="pc-user-name">{proj.manager?.name || "Project Manager"}</span>
                     <span className="pc-user-role">Manager</span>
                   </div>
                 </div>
 
                 <div className="pc-user" style={{ justifyContent: "center" }}>
                   <div className="pc-avatar-group">
-                    {proj.team.map((mbr, i) => (
+                    {(proj.team || []).map((mbr, i) => (
                       <div
                         key={i}
                         className="pc-avatar shadow-sm"
-                        style={{ background: mbr.color, zIndex: 10 - i }}
+                        style={{ background: mbr.color || "#3b82f6", zIndex: 10 - i }}
                       >
                         {mbr.initials}
                       </div>

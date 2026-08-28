@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Button from "../../components/common/Button";
 
 import {
@@ -14,8 +14,21 @@ import {
 } from "lucide-react";
 import "./AdminClaimDetails.css";
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
+import { expenseService } from "../../services";
 
 const AdminClaimDetails = ({ claim, onBack }) => {
+  const [currentStatus, setCurrentStatus] = useState(claim ? claim.status : "Submitted");
+
+  const handleStatusChange = async (newStatus) => {
+    setCurrentStatus(newStatus);
+    if (claim && claim.id) {
+      try {
+        await expenseService.updateClaimStatus(claim.id, newStatus);
+      } catch (err) {
+        console.warn("API Claim status update fallback:", err);
+      }
+    }
+  };
   const getStatusColor = (status) => {
     switch (status) {
       case "Submitted":

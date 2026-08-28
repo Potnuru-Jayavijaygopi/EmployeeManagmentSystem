@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '../Button';
+import { notificationService, withFallback } from '../../../services';
 
 export const NotificationItem = ({ 
   initials, 
@@ -35,7 +36,16 @@ export const NotificationItem = ({
   );
 };
 
-export const NotificationList = ({ notifications, count, onViewAll }) => {
+export const NotificationList = ({ notifications: initialNotifications, count, onViewAll }) => {
+  const [notificationsList, setNotificationsList] = useState(initialNotifications || []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const data = await withFallback(notificationService.getNotifications(), initialNotifications);
+      if (data) setNotificationsList(Array.isArray(data) ? data : data.results || initialNotifications);
+    };
+    fetchNotifications();
+  }, []);
   return (
     <div className="card shadow-sm border-0 h-100 rounded-4 p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">

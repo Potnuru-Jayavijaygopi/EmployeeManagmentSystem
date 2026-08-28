@@ -16,12 +16,14 @@ import {
 import Modal from "../../components/common/Modal";
 import "./Attendance.css";
 import Button from "../../components/common/Button";
-import { historyData } from "../../data/attendanceHistoryData";
+import { historyData as initialHistoryData } from "../../data/attendanceHistoryData";
+import { attendanceService, withFallback } from "../../services";
 
 const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
   const [activeTab, setActiveTab] = useState("Attendance");
   const [sessionState, setSessionState] = useState("pre");
   const [historyView, setHistoryView] = useState("my");
+  const [records, setRecords] = useState(initialHistoryData);
 
   const [isWfhModalOpen, setIsWfhModalOpen] = useState(false);
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
@@ -29,11 +31,51 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
   const [wfhForm, setWfhForm] = useState({ date: "", reason: "" });
   const [regForm, setRegForm] = useState({ date: "", reason: "" });
 
-  const handleCheckIn = () => {
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      const apiRecords = await withFallback(attendanceService.getAttendanceRecords(), initialHistoryData);
+      setRecords(Array.isArray(apiRecords) ? apiRecords : apiRecords.results || initialHistoryData);
+    };
+    fetchAttendanceData();
+  }, []);
+
+  const historyData = records;
+
+  const handleWfhSubmit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      await attendanceService.submitWFHRequest(wfhForm);
+    } catch (err) {
+      console.warn("API WFH submission fallback:", err);
+    }
+    setIsWfhModalOpen(false);
+  };
+
+  const handleRegSubmit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      await attendanceService.submitRegularization(regForm);
+    } catch (err) {
+      console.warn("API Regularization submission fallback:", err);
+    }
+    setIsRegModalOpen(false);
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      await attendanceService.clockIn();
+    } catch (e) {
+      console.warn("API Clock In fallback:", e);
+    }
     setSessionState("active");
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
+    try {
+      await attendanceService.clockOut();
+    } catch (e) {
+      console.warn("API Clock Out fallback:", e);
+    }
     setSessionState("pre");
   };
 

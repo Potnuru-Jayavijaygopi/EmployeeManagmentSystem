@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import Modal from '../../components/common/Modal';
 import { Eye, Edit3, Clock, Plus, FileText, CheckCircle2 } from 'lucide-react';
 import './HROverview.css';
 import Button from '../../components/common/Button';
+import { employeeService, withFallback } from '../../services';
 
 const HROverview = ({ onTabChange, onNavigateHome }) => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [showHistoryForm, setShowHistoryForm] = useState(true);
+  const [onboardingList, setOnboardingList] = useState([]);
+
+  useEffect(() => {
+    const fetchHRData = async () => {
+      const onboarding = await withFallback(employeeService.getOnboardingChecklist(), []);
+      setOnboardingList(onboarding);
+    };
+    fetchHRData();
+  }, []);
 
   return (
     <>

@@ -6,14 +6,29 @@ import {
 } from 'lucide-react';
 import EmployeeDetails from '../../components/employees/EmployeeDetails';
 import './EmployeeDirectory.css';
-import { employees } from '../../data/employeesConstants';
+import { employees as initialEmployees } from '../../data/employeesConstants';
 import Button from '../../components/common/Button';
+import { employeeService, withFallback } from '../../services';
 
 const EmployeeDirectory = () => {
+  const [employeeList, setEmployeeList] = useState(initialEmployees);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalStep, setModalStep] = useState(2);
   const [activeMenu, setActiveMenu] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const data = await withFallback(employeeService.getEmployees(), initialEmployees);
+      if (Array.isArray(data) && data.length > 0) {
+        setEmployeeList(data);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  const employees = employeeList;
 
   useEffect(() => {
     const handleClickOutside = () => setActiveMenu(null);

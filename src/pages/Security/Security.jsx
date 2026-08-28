@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AlertTriangle, X, RefreshCw, CheckCircle2, ShieldBan, ShieldAlert,
   ChevronDown, Calendar, Lock, Shield, Server, FileText, Check, XCircle
@@ -7,10 +7,23 @@ import { Link } from 'react-router-dom';
 import './Security.css';
 import { eventsData } from '../../data/securityConstants';
 import Button from '../../components/common/Button';
+import { securityService, withFallback } from '../../services';
 
 const Security = () => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [showAlert, setShowAlert] = useState(true);
+  const [securityStatus, setSecurityStatus] = useState(null);
+  const [rateLimits, setRateLimits] = useState(null);
+
+  useEffect(() => {
+    const fetchSecurity = async () => {
+      const status = await withFallback(securityService.getSecurityStatus(), null);
+      const limits = await withFallback(securityService.getRateLimitStatus(), null);
+      if (status) setSecurityStatus(status);
+      if (limits) setRateLimits(limits);
+    };
+    fetchSecurity();
+  }, []);
 
   const tabs = ['Dashboard', 'Rate Limits', 'Events', 'Encryption', 'IP Blocklist', 'Configuration'];
   const getEventIcon = (type) => {

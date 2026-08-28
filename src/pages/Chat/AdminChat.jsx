@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   Search,
@@ -23,11 +23,24 @@ import "./Chat.css";
 import Button from "../../components/common/Button";
 import { MdFolderZip } from "react-icons/md";
 import { availableUsers } from "../../data/chatAvailableUsers";
+import { chatService, withFallback } from "../../services";
 
 const AdminChat = ({ onTabChange, onNavigateHome }) => {
   const [activeChat, setActiveChat] = useState(null);
   const [activeRightTab, setActiveRightTab] = useState("Info");
   const [hoveredMessage, setHoveredMessage] = useState(null);
+  const [chatRooms, setChatRooms] = useState([]);
+  const [channels, setChannels] = useState([]);
+
+  useEffect(() => {
+    const fetchAdminChat = async () => {
+      const roomsData = await withFallback(chatService.getRooms(), []);
+      const channelsData = await withFallback(chatService.getChannels(), []);
+      setChatRooms(roomsData);
+      setChannels(channelsData);
+    };
+    fetchAdminChat();
+  }, []);
 
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);

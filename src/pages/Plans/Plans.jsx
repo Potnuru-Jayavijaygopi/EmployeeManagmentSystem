@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, FileText, Download, Check, X, 
   AlertTriangle, XCircle, Clock, ChevronLeft, ChevronRight, ChevronDown 
@@ -7,10 +7,20 @@ import { Link } from 'react-router-dom';
 import './Plans.css';
 import { invoices } from '../../data/plansConstants';
 import Button from '../../components/common/Button';
+import { subscriptionService, withFallback } from '../../services';
 
 const Plans = () => {
   const [activeTab, setActiveTab] = useState('Invoices');
   const [modalType, setModalType] = useState(null); 
+  const [plans, setPlans] = useState([]);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      const plansList = await withFallback(subscriptionService.getPlans(), []);
+      setPlans(plansList);
+    };
+    fetchPlans();
+  }, []);
   const renderModal = () => {
     if (!modalType) return null;
 

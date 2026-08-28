@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import FilterPills from '../../components/common/FilterPills';
@@ -8,9 +8,11 @@ import {
   Heart, Thermometer, Briefcase, Baby, User, CheckCircle2, X
 } from 'lucide-react';
 import './Leave.css';
+import { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
-import { historyData } from '../../data/attendanceHistoryData';
+import { historyData as initialHistoryData } from '../../data/attendanceHistoryData';
 import { leaveTypes } from '../../data/leaveData';
+import { leaveService, withFallback } from '../../services';
 
 const Leave = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -19,12 +21,28 @@ const Leave = ({ onTabChange, onNavigateHome }) => {
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [leaveForm, setLeaveForm] = useState({ type: '', fromDate: '', toDate: '', reason: '' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [leaveList, setLeaveList] = useState(initialHistoryData);
+  const [leaveBalance, setLeaveBalance] = useState(null);
 
-  const filteredData = activeFilter === 'All' 
-    ? historyData 
-    : historyData.filter(item => item.status === activeFilter);
+  useEffect(() => {
+    const fetchLeaves = async () => {
+      const leaves = await withFallback(leaveService.getLeaves(), initialHistoryData);
+      const balance = await withFallback(leaveService.getLeaveBalance(), null);
+      setLeaveList(Array.isArray(leaves) ? leaves : leaves.results || initialHistoryData);
+      if (balance) setLeaveBalance(balance);
+    };
 
-  const handleSubmitLeave = () => {
+    fetchLeaves();
+  }, []);
+
+  const historyData = leaveList;
+
+  const handleSubmitLeave = async () => {
+    try {
+      await leaveService.submitLeaveRequest(leaveForm);
+    } catch (e) {
+      console.warn('Leave submission API fallback:', e);
+    }
     setIsApplyModalOpen(false);
     setIsToastVisible(true);
     setTimeout(() => setIsToastVisible(false), 3000);

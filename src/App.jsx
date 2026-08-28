@@ -37,13 +37,13 @@ import LandingPage from "./pages/LandingPage/LandingPage";
 import HrLandingPage from "./pages/HRLanding/HrLandingPage";
 import ManagerPortalLandingPage from "./pages/ManagerPortalLandingPage/ManagerPortalLandingPage";
 import PageTitleUpdater from "./components/PageTitleUpdater/PageTitleUpdater";
-
-
+import { AuthProvider } from "./context/AuthContext";
 
 function App() {
   return (
-    <Router>
-      <PageTitleUpdater />
+    <AuthProvider>
+      <Router>
+        <PageTitleUpdater />
       <Routes>
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/signup" element={<Signup />} />
@@ -142,6 +142,7 @@ function App() {
         </Route>
       </Routes>
     </Router>
+    </AuthProvider>
   );
 }
 

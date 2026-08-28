@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import Modal from '../../components/common/Modal';
@@ -20,6 +20,7 @@ import {
 import './Compliance.css';
 import Button from '../../components/common/Button';
 import { filters } from '../../data/complianceFiltersData';
+import { complianceService, withFallback } from '../../services';
 
 const Compliance = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('Policies');
@@ -28,6 +29,18 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState(null); 
   const [selectedEmployee, setSelectedEmployee] = useState(null); 
+  const [policies, setPolicies] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCompliance = async () => {
+      const polData = await withFallback(complianceService.getPolicies(), []);
+      const catData = await withFallback(complianceService.getCategories(), []);
+      setPolicies(polData);
+      setCategories(catData);
+    };
+    fetchCompliance();
+  }, []);
 
   const handleFilterChange = (id) => {
     setActiveFilter(id);

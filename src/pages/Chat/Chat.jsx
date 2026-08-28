@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   Search,
@@ -16,9 +16,20 @@ import {
 } from "lucide-react";
 import "./Chat.css";
 import Button from "../../components/common/Button";
+import { chatService, withFallback } from "../../services";
 
 const Chat = ({ onTabChange, onNavigateHome }) => {
   const [activeChat, setActiveChat] = useState(null);
+  const [rooms, setRooms] = useState([]);
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    const fetchChatData = async () => {
+      const roomList = await withFallback(chatService.getRooms(), []);
+      setRooms(roomList);
+    };
+    fetchChatData();
+  }, []);
 
   return (
     <>
