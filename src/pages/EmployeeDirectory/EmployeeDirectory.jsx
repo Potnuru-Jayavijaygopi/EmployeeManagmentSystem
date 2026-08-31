@@ -10,6 +10,25 @@ import { employees as initialEmployees } from '../../data/employeesConstants';
 import Button from '../../components/common/Button';
 import { employeeService, withFallback } from '../../services';
 
+const normalizeEmployee = (emp) => ({
+  id: emp.id || emp.employee_id || emp.empId,
+  empId: emp.employee_id || emp.empId || `EMP${String(emp.id || '001').padStart(3, '0')}`,
+  name: emp.name || (emp.first_name ? `${emp.first_name} ${emp.last_name || ''}`.trim() : 'Employee'),
+  email: emp.email || '',
+  role: emp.designation_name || emp.designation || emp.role || 'Staff',
+  dept: emp.department_name || emp.department || emp.dept || 'General',
+  status: emp.status || 'Active',
+  statusColor: emp.status === 'Active' ? 'bg-green-subtle text-green' : 'bg-yellow-subtle text-yellow',
+  joinDate: emp.date_of_joining || emp.joinDate || '2024-01-15',
+  tenure: emp.tenure || '1 year',
+  attendance: emp.attendance || '95%',
+  lms: emp.lms_progress || emp.lms || 80,
+  lmsColor: 'bg-blue',
+  avatarBg: emp.avatarBg || 'bg-blue-light',
+  avatarText: emp.avatarText || 'text-blue',
+  initials: emp.initials || (emp.first_name ? `${emp.first_name[0]}${emp.last_name ? emp.last_name[0] : ''}` : 'EM')
+});
+
 const EmployeeDirectory = () => {
   const [employeeList, setEmployeeList] = useState(initialEmployees);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -20,8 +39,9 @@ const EmployeeDirectory = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       const data = await withFallback(employeeService.getEmployees(), initialEmployees);
-      if (Array.isArray(data) && data.length > 0) {
-        setEmployeeList(data);
+      const rawList = Array.isArray(data) ? data : (data?.results && Array.isArray(data.results)) ? data.results : null;
+      if (rawList && rawList.length > 0) {
+        setEmployeeList(rawList.map(normalizeEmployee));
       }
     };
 
@@ -35,6 +55,7 @@ const EmployeeDirectory = () => {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
   if (selectedEmployee) {
     return <EmployeeDetails employee={selectedEmployee} onBack={() => setSelectedEmployee(null)} />;
   }
@@ -46,7 +67,7 @@ const EmployeeDirectory = () => {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h1 className="page-title m-0">Employee List</h1>
-            <p className="page-subtitle mt-1 mb-0 text-slate">142 employees across 8 departments</p>
+            <p className="page-subtitle mt-1 mb-0 text-slate">{employees.length} employees across 8 departments</p>
           </div>
           <div className="d-flex gap-2">
             <Button variant="secondary" className="btn btn-light bg-white border d-flex align-items-center fw-semibold text-dark shadow-sm">
@@ -65,7 +86,7 @@ const EmployeeDirectory = () => {
                 <Users size={24} />
               </div>
               <div className="emp-kpi-content">
-                <div className="emp-kpi-value">142</div>
+                <div className="emp-kpi-value">{employees.length}</div>
                 <div className="emp-kpi-label">Total</div>
               </div>
             </div>
@@ -76,7 +97,7 @@ const EmployeeDirectory = () => {
                 <CheckCircle size={24} />
               </div>
               <div className="emp-kpi-content">
-                <div className="emp-kpi-value text-green">138</div>
+                <div className="emp-kpi-value text-green">{employees.filter(e => e.status === 'Active').length || employees.length}</div>
                 <div className="emp-kpi-label">Active</div>
               </div>
             </div>
@@ -87,7 +108,7 @@ const EmployeeDirectory = () => {
                 <Star size={24} />
               </div>
               <div className="emp-kpi-content">
-                <div className="emp-kpi-value text-yellow">4</div>
+                <div className="emp-kpi-value text-yellow">{employees.filter(e => e.status === 'On Probation').length}</div>
                 <div className="emp-kpi-label">On Probation</div>
               </div>
             </div>
@@ -98,7 +119,7 @@ const EmployeeDirectory = () => {
                 <XCircle size={24} />
               </div>
               <div className="emp-kpi-content">
-                <div className="emp-kpi-value text-red">2</div>
+                <div className="emp-kpi-value text-red">{employees.filter(e => e.status === 'On Notice').length}</div>
                 <div className="emp-kpi-label">On Notice</div>
               </div>
             </div>
@@ -124,17 +145,17 @@ const EmployeeDirectory = () => {
                 <option>On Probation</option>
               </select>
             </div>
-            <div className="text-slate small">Showing 8 employees</div>
+            <div className="text-slate small">Showing {employees.length} employees</div>
           </div>
         </div>
 
         <div className="emp-table-container shadow-sm">
           <div className="emp-table-header">
-            <span className="text-slate small fw-semibold">8 employees</span>
+            <span className="text-slate small fw-semibold">{employees.length} employees</span>
             <div className="emp-table-pills">
-              <span className="emp-pill bg-green-light text-green">138 Active</span>
-              <span className="emp-pill bg-yellow-light text-yellow">4 Probation</span>
-              <span className="emp-pill bg-red-light text-red">2 Notice</span>
+              <span className="emp-pill bg-green-light text-green">{employees.filter(e => e.status === 'Active').length || employees.length} Active</span>
+              <span className="emp-pill bg-yellow-light text-yellow">{employees.filter(e => e.status === 'On Probation').length} Probation</span>
+              <span className="emp-pill bg-red-light text-red">{employees.filter(e => e.status === 'On Notice').length} Notice</span>
             </div>
           </div>
           <div className="table-responsive">

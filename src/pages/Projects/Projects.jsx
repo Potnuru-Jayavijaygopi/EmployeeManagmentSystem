@@ -30,6 +30,21 @@ import { MdOutlineArchive } from "react-icons/md";
 import Button from '../../components/common/Button';
 import { dashboardService, withFallback } from "../../services";
 
+const normalizeProject = (proj) => ({
+  id: proj.project_id || proj.id || 'PRJ-001',
+  title: proj.name || proj.title || 'Project',
+  desc: proj.description || proj.desc || '',
+  status: proj.status || 'Active',
+  priority: proj.priority || 'Medium',
+  dept: proj.department_name || proj.dept || 'Engineering',
+  progress: proj.progress_percentage !== undefined ? proj.progress_percentage : (proj.progress || 0),
+  deadline: proj.end_date || proj.deadline || '2026-12-31',
+  isOverdue: proj.is_overdue || proj.isOverdue || false,
+  manager: proj.manager_details || proj.manager || { name: 'Project Manager', initials: 'PM', color: '#3b82f6' },
+  team: proj.team_members || proj.team || [],
+  tasks: proj.tasks_list || proj.tasks || []
+});
+
 const Projects = () => {
   const location = useLocation();
   const [projectsList, setProjectsList] = useState(initialProjectsData);
@@ -37,8 +52,9 @@ const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       const projects = await withFallback(dashboardService.getProjects(), initialProjectsData);
-      if (Array.isArray(projects) && projects.length > 0 && projects[0]?.manager) {
-        setProjectsList(projects);
+      const rawList = Array.isArray(projects) ? projects : (projects?.results && Array.isArray(projects.results)) ? projects.results : null;
+      if (rawList && rawList.length > 0) {
+        setProjectsList(rawList.map(normalizeProject));
       }
     };
     fetchProjects();

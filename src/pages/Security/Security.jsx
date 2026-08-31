@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './Security.css';
-import { eventsData } from '../../data/securityConstants';
+import { eventsData as initialEventsData } from '../../data/securityConstants';
 import Button from '../../components/common/Button';
 import { securityService, withFallback } from '../../services';
 
@@ -14,13 +14,19 @@ const Security = () => {
   const [showAlert, setShowAlert] = useState(true);
   const [securityStatus, setSecurityStatus] = useState(null);
   const [rateLimits, setRateLimits] = useState(null);
+  const [eventsList, setEventsList] = useState(initialEventsData);
 
   useEffect(() => {
     const fetchSecurity = async () => {
       const status = await withFallback(securityService.getSecurityStatus(), null);
       const limits = await withFallback(securityService.getRateLimitStatus(), null);
+      const logs = await withFallback(securityService.getActivityLogs(), initialEventsData);
       if (status) setSecurityStatus(status);
       if (limits) setRateLimits(limits);
+      const rawLogs = Array.isArray(logs) ? logs : (logs?.results && Array.isArray(logs.results)) ? logs.results : null;
+      if (rawLogs && rawLogs.length > 0) {
+        setEventsList(rawLogs);
+      }
     };
     fetchSecurity();
   }, []);
@@ -337,7 +343,7 @@ const Security = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {eventsData.map((event, idx) => (
+                    {eventsList.map((event, idx) => (
                       <tr key={idx}>
                         <td>{event.time}</td>
                         <td>
