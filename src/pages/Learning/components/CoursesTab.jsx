@@ -1,13 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import CourseCard from './CourseCard';
 import EditCourseModal from './modals/EditCourseModal';
 
 import Button from '../../../components/common/Button';
-import { mockCourses } from '../../../data/mockCourses';
+import { lmsService } from '../../../services';
 
 const CoursesTab = ({ onCreateCourseClick, onViewCourseDetails }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [coursesList, setCoursesList] = useState([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await lmsService.getCourses();
+        const raw = Array.isArray(res) 
+          ? res 
+          : Array.isArray(res?.data?.results) 
+          ? res.data.results 
+          : Array.isArray(res?.results) 
+          ? res.results 
+          : Array.isArray(res?.data) 
+          ? res.data 
+          : [];
+        setCoursesList(raw);
+      } catch (err) {
+        setCoursesList([]);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const mappedCourses = coursesList.map((c, idx) => ({
+    id: c.id || idx + 1,
+    title: c.title || 'Course Title',
+    category: c.category || 'General',
+    description: c.description || '',
+    duration: `${c.duration_hours || 10} hours`,
+    progress: 50,
+    thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60'
+  }));
 
   return (
     <div>
@@ -44,15 +76,19 @@ const CoursesTab = ({ onCreateCourseClick, onViewCourseDetails }) => {
       </div>
 
       <div className="row g-4">
-        {mockCourses.map(course => (
-          <div key={course.id} className="col-12 col-md-6 col-xl-4">
-            <CourseCard 
-              course={course} 
-              onViewDetails={() => onViewCourseDetails(course.title)} 
-              onEdit={() => setIsEditModalOpen(true)}
-            />
-          </div>
-        ))}
+        {mappedCourses.length > 0 ? (
+          mappedCourses.map(course => (
+            <div key={course.id} className="col-12 col-md-6 col-xl-4">
+              <CourseCard 
+                course={course} 
+                onViewDetails={() => onViewCourseDetails(course.title)} 
+                onEdit={() => setIsEditModalOpen(true)}
+              />
+            </div>
+          ))
+        ) : (
+          <div className="col-12 text-center py-5 text-muted">No courses found in database.</div>
+        )}
       </div>
 
       <EditCourseModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />

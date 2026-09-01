@@ -12,8 +12,13 @@ const Learning = () => {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const coursesData = await withFallback(lmsService.getCourses(), []);
-      setCourses(coursesData);
+      try {
+        const coursesData = await lmsService.getCourses();
+        const rawList = Array.isArray(coursesData) ? coursesData : (coursesData?.results && Array.isArray(coursesData.results)) ? coursesData.results : [];
+        setCourses(rawList);
+      } catch (err) {
+        setCourses([]);
+      }
     };
     fetchCourses();
   }, []);

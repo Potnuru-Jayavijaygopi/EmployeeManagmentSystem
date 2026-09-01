@@ -3,8 +3,10 @@ import apiClient, { setTokens, clearTokens } from './apiClient';
 export const authService = {
   login: async (credentials) => {
     const data = await apiClient.post('/auth/login/', credentials);
-    if (data.access || data.token) {
-      setTokens(data.access || data.token, data.refresh);
+    const accessToken = data.tokens?.access || data.access || data.token;
+    const refreshToken = data.tokens?.refresh || data.refresh;
+    if (accessToken) {
+      setTokens(accessToken, refreshToken);
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
       }

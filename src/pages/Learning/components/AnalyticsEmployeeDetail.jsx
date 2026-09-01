@@ -33,6 +33,14 @@ const ProgressBar = ({ progress, color }) => (
 );
 
 const AnalyticsEmployeeDetail = ({ employee, onBack }) => {
+  const userName = employee?.user_name || employee?.name || employee?.user_email || 'Employee';
+  const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2);
+  const role = employee?.role || 'Team Member';
+  const team = employee?.team || 'Engineering';
+  const email = employee?.user_email || (userName ? `${userName.toLowerCase().replace(/\s+/g, '.')}@company.com` : 'employee@company.com');
+  const empId = employee?.id || employee?.user || '001';
+  const color = employee?.color || '#3b82f6';
+
   return (
     <div>
 
@@ -40,7 +48,7 @@ const AnalyticsEmployeeDetail = ({ employee, onBack }) => {
         <div className="d-flex align-items-center gap-2 text-muted small fw-medium">
           <span className="cursor-pointer hover-text-primary" onClick={onBack}>Analytics</span>
           <span>/</span>
-          <span className="text-dark">{employee.name}</span>
+          <span className="text-dark">{userName}</span>
         </div>
         <Button variant="outline" 
           className="btn-system btn-system-size-default btn-system-outline bg-white text-dark border-secondary"
@@ -52,22 +60,22 @@ const AnalyticsEmployeeDetail = ({ employee, onBack }) => {
 
       <div className="d-flex justify-content-between align-items-center mb-4 pb-4 border-bottom">
         <div className="d-flex align-items-center gap-3">
-          <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold lms-icon-xl lms-font-xl" style={{ backgroundColor: employee.color }}>
-            {employee.initials}
+          <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold lms-icon-xl lms-font-xl" style={{ backgroundColor: color }}>
+            {initials}
           </div>
           <div>
-            <h4 className="fw-bold mb-1">{employee.name}</h4>
+            <h4 className="fw-bold mb-1">{userName}</h4>
             <div className="text-muted small d-flex gap-3">
-              <span>{employee.role} | {employee.team} Team</span>
-              <span>Email: {employee.name.toLowerCase().replace(' ', '.')}@company.com</span>
-              <span>Employee ID: EMP00{employee.id}</span>
+              <span>{role} | {team} Team</span>
+              <span>Email: {email}</span>
+              <span>Employee ID: EMP00{empId}</span>
             </div>
           </div>
         </div>
         <div>
           <label className="form-label small fw-bold text-muted text-uppercase mb-1 lms-font-xs">Select Employee</label>
-          <select className="form-select form-select-sm text-dark shadow-none lms-radius-md" defaultValue={employee.name} style={{ width: '200px' }}>
-            <option>{employee.name}</option>
+          <select className="form-select form-select-sm text-dark shadow-none lms-radius-md" defaultValue={userName} style={{ width: '200px' }}>
+            <option>{userName}</option>
             <option>Arjun Kumar</option>
             <option>Sneha Patel</option>
           </select>
