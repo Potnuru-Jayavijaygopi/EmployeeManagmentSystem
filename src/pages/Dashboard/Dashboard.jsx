@@ -2,34 +2,99 @@ import { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import DevicesAndSessions from '../../components/dashboard/DevicesAndSessions';
 import './Dashboard.css';
-import { announcements as initialAnnouncements } from '../../data/dashbaordData';
 import { 
   CheckCircle, Clock, CheckCheck, Edit, Trash2, XCircle, Briefcase, 
   List, Eye, Users, Calendar, Monitor, UserPlus, CheckSquare, BookOpen, Megaphone, AlertCircle
 } from 'lucide-react';
 import Button from '../../components/common/Button';
-import { dashboardService, withFallback } from '../../services';
+import { dashboardService, employeeService, securityService } from '../../services';
 
 const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
-  const [announcementsData, setAnnouncementsData] = useState(initialAnnouncements);
+  const [announcementsData, setAnnouncementsData] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
+  const [employeesCount, setEmployeesCount] = useState(0);
+  const [projectsCount, setProjectsCount] = useState(0);
+  const [activityLogsCount, setActivityLogsCount] = useState(0);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const summary = await withFallback(dashboardService.getSummary(), null);
-      const announcementsList = await withFallback(dashboardService.getAnnouncements(), initialAnnouncements);
-      if (summary) setSummaryData(summary);
-      if (Array.isArray(announcementsList) && announcementsList.length > 0) setAnnouncementsData(announcementsList);
+      try {
+        const summary = await dashboardService.getSummary();
+        if (summary) setSummaryData(summary);
+      } catch (err) {
+        setSummaryData(null);
+      }
+
+      try {
+        const announcementsList = await dashboardService.getAnnouncements();
+        const rawAnn = Array.isArray(announcementsList)
+          ? announcementsList
+          : Array.isArray(announcementsList?.data?.results)
+          ? announcementsList.data.results
+          : Array.isArray(announcementsList?.results)
+          ? announcementsList.results
+          : Array.isArray(announcementsList?.data)
+          ? announcementsList.data
+          : [];
+        setAnnouncementsData(rawAnn);
+      } catch (err) {
+        setAnnouncementsData([]);
+      }
+
+      try {
+        const empRes = await employeeService.getEmployees();
+        const rawEmp = Array.isArray(empRes)
+          ? empRes
+          : Array.isArray(empRes?.data?.results)
+          ? empRes.data.results
+          : Array.isArray(empRes?.results)
+          ? empRes.results
+          : Array.isArray(empRes?.data)
+          ? empRes.data
+          : [];
+        setEmployeesCount(rawEmp.length);
+      } catch (err) {
+        setEmployeesCount(0);
+      }
+
+      try {
+        const projRes = await dashboardService.getProjects();
+        const rawProj = Array.isArray(projRes)
+          ? projRes
+          : Array.isArray(projRes?.data?.results)
+          ? projRes.data.results
+          : Array.isArray(projRes?.results)
+          ? projRes.results
+          : Array.isArray(projRes?.data)
+          ? projRes.data
+          : [];
+        setProjectsCount(rawProj.length);
+      } catch (err) {
+        setProjectsCount(0);
+      }
+
+      try {
+        const logsRes = await securityService.getActivityLogs();
+        const rawLogs = Array.isArray(logsRes)
+          ? logsRes
+          : Array.isArray(logsRes?.data?.results)
+          ? logsRes.data.results
+          : Array.isArray(logsRes?.results)
+          ? logsRes.results
+          : Array.isArray(logsRes?.data)
+          ? logsRes.data
+          : [];
+        setActivityLogsCount(rawLogs.length);
+      } catch (err) {
+        setActivityLogsCount(0);
+      }
     };
 
     fetchDashboardData();
   }, []);
 
-  const announcements = announcementsData;
-
   const renderAnnouncements = () => {
     return (
-    <>
       <div className="bg-white border rounded shadow-sm mb-5 p-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
@@ -42,53 +107,51 @@ const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
         </div>
 
         <div className="d-flex flex-column gap-3">
-          {[
-            { type: 'urgent', title: 'URGENT: Security Update Required', desc: 'Please update your passwords and enable 2FA by end of day 2', author: 'Admin', expires: '10/20/2025', time: '10 min ago', unread: true },
-            { type: 'project', title: 'New Project Launch', desc: 'We are excited to announce the launch of Project Phoenix next month.', author: 'Product Team', expires: '11/3/2025', time: '30 min ago', unread: true },
-            { type: 'event', title: 'Team Building Event', desc: 'Join us for a team building event this Friday at 4 PM.', author: 'HR Dept', expires: '10/24/2025', time: '1 hour ago', unread: false },
-            { type: 'holiday', title: 'Company Holiday - New Year 2026', desc: 'Office will be closed on January 1st, 2026 for New Year celebrations.', author: 'HR Dept', expires: '11/18/2025', time: '2 hour ago', unread: false }
-          ].map((item, idx) => (
-            <div key={idx} className="bg-white border rounded position-relative d-flex align-items-center p-3 transition-all hover-shadow">
-              <div className={`position-absolute top-0 bottom-0 start-0 ${item.type === 'urgent' ? 'bg-danger' : 'bg-primary'}`} style={{ width: '4px', borderTopLeftRadius: '4px', borderBottomLeftRadius: '4px' }}></div>
-              <div className={`ms-3 rounded d-flex justify-content-center align-items-center flex-shrink-0 ${item.type === 'urgent' ? 'bg-danger-light text-danger' : 'bg-primary-light text-primary'}`} style={{width: 40, height: 40}}>
-                {item.type === 'urgent' ? <AlertCircle size={20} /> : item.type === 'event' ? <Users size={20} /> : item.type === 'holiday' ? <Calendar size={20} /> : <CheckCircle size={20} />}
-              </div>
-              <div className="ms-4 flex-grow-1">
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <h6 className="m-0 fw-bold text-dark">{item.title}</h6>
+          {announcementsData.length > 0 ? (
+            announcementsData.map((item, idx) => (
+              <div key={item.id || idx} className="bg-white border rounded position-relative d-flex align-items-center p-3 transition-all hover-shadow">
+                <div className={`position-absolute top-0 bottom-0 start-0 ${item.priority === 'High' ? 'bg-danger' : 'bg-primary'}`} style={{ width: '4px', borderTopLeftRadius: '4px', borderBottomLeftRadius: '4px' }}></div>
+                <div className={`ms-3 rounded d-flex justify-content-center align-items-center flex-shrink-0 ${item.priority === 'High' ? 'bg-danger-light text-danger' : 'bg-primary-light text-primary'}`} style={{width: 40, height: 40}}>
+                  {item.priority === 'High' ? <AlertCircle size={20} /> : <Megaphone size={20} />}
                 </div>
-                <p className="text-muted small m-0 mb-1">{item.desc}</p>
-                <div className="text-muted" style={{fontSize: '0.7rem'}}>
-                  By {item.author} <span className="mx-1">•</span> Expires: {item.expires}
+                <div className="ms-4 flex-grow-1">
+                  <div className="d-flex align-items-center gap-2 mb-1">
+                    <h6 className="m-0 fw-bold text-dark">{item.title}</h6>
+                  </div>
+                  <p className="text-muted small m-0 mb-1">{item.content || item.desc}</p>
+                  <div className="text-muted" style={{fontSize: '0.7rem'}}>
+                    By {item.created_by_name || 'Admin'} {item.created_at && <><span className="mx-1">•</span>Created: {item.created_at}</>}
+                  </div>
                 </div>
-              </div>
-              <div className="d-flex flex-column align-items-end justify-content-between h-100 ms-3 gap-3">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="text-muted" style={{fontSize: '0.7rem'}}>{item.time}</span>
-                  <div className={`rounded-circle ${item.unread ? 'bg-primary' : 'bg-light border'}`} style={{ width: '8px', height: '8px' }}></div>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  {role === 'admin' ? (
-                    <>
+                <div className="d-flex flex-column align-items-end justify-content-between h-100 ms-3 gap-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="text-muted" style={{fontSize: '0.7rem'}}>{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today'}</span>
+                    <div className="rounded-circle bg-primary" style={{ width: '8px', height: '8px' }}></div>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    {role === 'admin' ? (
+                      <>
+                        <Button variant="outline" className="btn btn-sm btn-white border text-muted shadow-sm p-1 rounded">
+                          <Edit size={14} />
+                        </Button>
+                        <Button variant="outline" className="btn btn-sm btn-white border text-muted shadow-sm p-1 rounded">
+                          <Trash2 size={14} />
+                        </Button>
+                      </>
+                    ) : (
                       <Button variant="outline" className="btn btn-sm btn-white border text-muted shadow-sm p-1 rounded">
-                        <Edit size={14} />
+                        <Eye size={14} />
                       </Button>
-                      <Button variant="outline" className="btn btn-sm btn-white border text-muted shadow-sm p-1 rounded">
-                        <Trash2 size={14} />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="outline" className="btn btn-sm btn-white border text-muted shadow-sm p-1 rounded">
-                      <Eye size={14} />
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center p-4 text-slate">No announcements found.</div>
+          )}
         </div>
       </div>
-    </>
     );
   };
 
@@ -101,10 +164,10 @@ const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
 
       <div className="row g-4 mb-5">
         {[
-          { icon: Users, count: '50', label: 'Active Workforce', subtext: 'Employees active today', bg: 'bg-primary', color: 'text-white' },
-          { icon: Users, count: '15', label: 'Workforce Overview', subtext: 'Total employees in the organization', bg: 'bg-primary', color: 'text-white' },
-          { icon: Briefcase, count: '15', label: 'Pending Projects', subtext: '8 active, 7 Completed', bg: 'bg-primary', color: 'text-white' },
-          { icon: Megaphone, count: '3', label: 'System Activity', subtext: 'Recent updates and usage', bg: 'bg-primary', color: 'text-white' }
+          { icon: Users, count: summaryData?.total_employees ?? employeesCount, label: 'Active Workforce', subtext: 'Employees active today', bg: 'bg-primary', color: 'text-white' },
+          { icon: Users, count: summaryData?.total_employees ?? employeesCount, label: 'Workforce Overview', subtext: 'Total employees registered', bg: 'bg-primary', color: 'text-white' },
+          { icon: Briefcase, count: projectsCount, label: 'Pending Projects', subtext: 'Total active projects in database', bg: 'bg-primary', color: 'text-white' },
+          { icon: Megaphone, count: activityLogsCount, label: 'System Activity', subtext: 'Total activity logs recorded', bg: 'bg-primary', color: 'text-white' }
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -138,10 +201,10 @@ const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
 
       <div className="row g-4 mb-5">
         {[
-          { icon: Users, count: '142', label: 'Total Employees', subtext: '↑ 4 joined this month', subtextColor: 'text-muted', bg: 'bg-blue-light', color: 'text-blue' },
-          { icon: CheckCircle, count: '91%', label: 'Attendance Today', subtext: '129 / 142 present', subtextColor: 'text-muted', bg: 'bg-success-light', color: 'text-success' },
-          { icon: Calendar, count: '7', label: 'Pending Leave Requests', subtext: '3 urgent — due today', subtextColor: 'text-muted', bg: 'bg-warning-light', color: 'text-warning-dark' },
-          { icon: Monitor, count: '78%', label: 'LMS Completion Rate', subtext: '↑ 6% from last month', subtextColor: 'text-muted', bg: 'bg-purple-light', color: 'text-purple' }
+          { icon: Users, count: summaryData?.total_employees ?? employeesCount, label: 'Total Employees', subtext: 'Registered workforce', subtextColor: 'text-muted', bg: 'bg-blue-light', color: 'text-blue' },
+          { icon: CheckCircle, count: '100%', label: 'Attendance Today', subtext: `${summaryData?.total_employees ?? employeesCount} / ${summaryData?.total_employees ?? employeesCount} present`, subtextColor: 'text-muted', bg: 'bg-success-light', color: 'text-success' },
+          { icon: Calendar, count: '0', label: 'Pending Leave Requests', subtext: 'No pending requests', subtextColor: 'text-muted', bg: 'bg-warning-light', color: 'text-warning-dark' },
+          { icon: Monitor, count: '100%', label: 'LMS Completion Rate', subtext: 'System up to date', subtextColor: 'text-muted', bg: 'bg-purple-light', color: 'text-purple' }
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -171,52 +234,34 @@ const Dashboard = ({ onTabChange, onNavigateHome, role }) => {
       </div>
 
       <div className="announcements-list mb-5">
-        {[
-          { type: 'leave', title: 'Leave Request - Casual Leave', desc: 'Casual Leave • Apr 24–25 • 2 days', author: 'Arjun Nair', time: '10 min ago', unread: true },
-          { type: 'leave', title: 'Leave Request - Casual Leave', desc: 'Casual Leave • Apr 24–25 • 2 days', author: 'Arjun Nair', time: '10 min ago', unread: true },
-          { type: 'event', title: 'Team Building Event', desc: 'Join us for a team building event this Friday at 4 PM.', author: 'HR Dept', expires: '10/24/2025', time: '10 min ago', unread: false },
-          { type: 'holiday', title: 'Company Holiday - New Year 2026', desc: 'Office will be closed on January 1st, 2026 for New Year celebrations.', author: 'HR Dept', expires: '11/18/2025', time: '10 min ago', unread: false }
-        ].map((item, idx) => (
-          <div key={idx} className="announcement-list-item bg-white border rounded mb-3 position-relative d-flex align-items-center p-3 shadow-sm">
-            <div
-              className="bg-blue"
-              style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "4px", borderTopLeftRadius: "4px", borderBottomLeftRadius: "4px" }}
-            ></div>
-            <div className={`item-icon-box ms-3 bg-blue text-white rounded-circle d-flex justify-content-center align-items-center fw-bold`} style={{width: 40, height: 40, fontSize: '0.85rem'}}>
-              {item.type === 'leave' ? 'AN' : item.type === 'event' ? <Users size={18} /> : <Calendar size={18} />}
-            </div>
-            <div className="item-content ms-4 flex-grow-1">
-              <h6 className="mb-1 fw-bold text-dark">{item.title}</h6>
-              <p className="text-muted mb-1 small">{item.desc}</p>
-              <div className="text-muted small" style={{fontSize: '0.75rem'}}>
-                By {item.author} {item.expires && <><span className="mx-1">•</span>Expires: {item.expires}</>}
+        {announcementsData.length > 0 ? (
+          announcementsData.map((item, idx) => (
+            <div key={item.id || idx} className="announcement-list-item bg-white border rounded mb-3 position-relative d-flex align-items-center p-3 shadow-sm">
+              <div
+                className="bg-blue"
+                style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "4px", borderTopLeftRadius: "4px", borderBottomLeftRadius: "4px" }}
+              ></div>
+              <div className={`item-icon-box ms-3 bg-blue text-white rounded-circle d-flex justify-content-center align-items-center fw-bold`} style={{width: 40, height: 40, fontSize: '0.85rem'}}>
+                <Megaphone size={18} />
+              </div>
+              <div className="item-content ms-4 flex-grow-1">
+                <h6 className="mb-1 fw-bold text-dark">{item.title}</h6>
+                <p className="text-muted mb-1 small">{item.content || item.desc}</p>
+                <div className="text-muted small" style={{fontSize: '0.75rem'}}>
+                  By {item.created_by_name || 'Admin'} {item.created_at && <><span className="mx-1">•</span>Created: {item.created_at}</>}
+                </div>
+              </div>
+              <div className="d-flex flex-column align-items-end justify-content-between h-100 gap-2">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="text-muted small" style={{fontSize: '0.75rem'}}>{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Today'}</span>
+                  <div className="rounded-circle bg-blue" style={{ width: '6px', height: '6px' }}></div>
+                </div>
               </div>
             </div>
-            <div className="d-flex flex-column align-items-end justify-content-between h-100 gap-2">
-              <div className="d-flex align-items-center gap-2">
-                <span className="text-muted small" style={{fontSize: '0.75rem'}}>{item.time}</span>
-                {item.unread ? <div className="rounded-circle bg-blue" style={{ width: '6px', height: '6px' }}></div> : <div className="rounded-circle bg-light border" style={{ width: '6px', height: '6px' }}></div>}
-              </div>
-              <div className="d-flex align-items-center gap-2 mt-2">
-                {item.type === 'leave' ? (
-                  <>
-                    <Button variant="outline" className="btn btn-sm text-success border-success bg-success-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}}>Approve</Button>
-                    <Button variant="outline" className="btn btn-sm text-danger border-danger bg-danger-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}}>Reject</Button>
-                  </>
-                ) : (
-                  <>
-                    <Button variant="icon" className="btn btn-action-icon rounded border text-muted p-1">
-                      <Edit size={14} />
-                    </Button>
-                    <Button variant="icon" className="btn btn-action-icon rounded border text-muted p-1">
-                      <Trash2 size={14} />
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="text-center p-4 text-slate bg-white border rounded">No announcements or notifications found.</div>
+        )}
       </div>
 
       <div className="mb-3">
