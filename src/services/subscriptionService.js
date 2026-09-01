@@ -6,7 +6,11 @@ export const subscriptionService = {
   },
 
   getCurrentSubscription: async () => {
-    return await apiClient.get('/subscriptions/subscription/');
+    return await apiClient.get('/subscriptions/subscription/current/').catch(() => []);
+  },
+
+  getHistory: async () => {
+    return await apiClient.get('/subscriptions/subscription/current/').catch(() => []);
   }
 };
 

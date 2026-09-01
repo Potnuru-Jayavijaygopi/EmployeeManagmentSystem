@@ -19,8 +19,7 @@ import {
 } from 'lucide-react';
 import './Compliance.css';
 import Button from '../../components/common/Button';
-import { filters } from '../../data/complianceFiltersData';
-import { complianceService, withFallback } from '../../services';
+import { complianceService, employeeService } from '../../services';
 
 const Compliance = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('Policies');
@@ -29,17 +28,42 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState(null); 
   const [selectedEmployee, setSelectedEmployee] = useState(null); 
+
   const [policies, setPolicies] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [acknowledgments, setAcknowledgments] = useState([]);
+  const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
-    const fetchCompliance = async () => {
-      const polData = await withFallback(complianceService.getPolicies(), []);
-      const catData = await withFallback(complianceService.getCategories(), []);
-      setPolicies(polData);
-      setCategories(catData);
+    const fetchComplianceData = async () => {
+      const [polRes, catRes, ackRes, empRes] = await Promise.allSettled([
+        complianceService.getPolicies(),
+        complianceService.getCategories(),
+        complianceService.getAcknowledgments(),
+        employeeService.getEmployees(),
+      ]);
+
+      if (polRes.status === 'fulfilled') {
+        const polData = polRes.value;
+        setPolicies(Array.isArray(polData) ? polData : (polData?.results || []));
+      } else { setPolicies([]); }
+
+      if (catRes.status === 'fulfilled') {
+        const catData = catRes.value;
+        setCategories(Array.isArray(catData) ? catData : (catData?.results || []));
+      } else { setCategories([]); }
+
+      if (ackRes.status === 'fulfilled') {
+        const ackData = ackRes.value;
+        setAcknowledgments(Array.isArray(ackData) ? ackData : (ackData?.results || []));
+      } else { setAcknowledgments([]); }
+
+      if (empRes.status === 'fulfilled') {
+        const empData = empRes.value;
+        setEmployees(Array.isArray(empData) ? empData : (empData?.results || []));
+      } else { setEmployees([]); }
     };
-    fetchCompliance();
+    fetchComplianceData();
   }, []);
 
   const handleFilterChange = (id) => {
@@ -48,8 +72,20 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
     setSelectedEmployee(null);
   };
 
-  const renderPolicyCard = () => (
-    <div className="bg-white rounded border p-4 shadow-sm h-100 d-flex flex-column">
+  const totalEmployeesCount = employees.length > 0 ? employees.length : 4;
+  const acknowledgedCount = acknowledgments.filter(a => a.acknowledged).length;
+  const pendingCount = Math.max(0, (policies.length * totalEmployeesCount) - acknowledgedCount);
+
+  const dynamicFilters = [
+    { id: 'Policies', label: 'Policies', count: policies.length },
+    { id: 'Pending', label: 'Pending', count: pendingCount },
+    { id: 'My Compliance', label: 'My Compliance', count: policies.length },
+    { id: 'Categories', label: 'Categories', count: categories.length },
+    { id: 'Acknowledgments', label: 'Acknowledgments', count: acknowledgments.length }
+  ];
+
+  const renderPolicyCard = (policy) => (
+    <div className="bg-white rounded border p-4 shadow-sm h-100 d-flex flex-column" key={policy?.id}>
       <div className="d-flex justify-content-between align-items-start mb-3">
         <div className="bg-blue-light text-blue rounded p-2 d-inline-flex">
           <Home size={20} />
@@ -58,20 +94,17 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
           PENDING
         </span>
       </div>
-      <h5 className="fw-bold text-dark mb-2">Remote Work Policy</h5>
+      <h5 className="fw-bold text-dark mb-2">{policy?.title || 'Policy'}</h5>
       <div className="d-flex gap-3 text-muted small mb-3" style={{ fontSize: '0.75rem' }}>
-        <span className="d-flex align-items-center gap-1"><Clock size={12} /> Version 2.4</span>
-        <span className="d-flex align-items-center gap-1"><Calendar size={12} /> Oct 24, 2023</span>
+        <span className="d-flex align-items-center gap-1"><Clock size={12} /> Version {policy?.version || '1.0'}</span>
+        <span className="d-flex align-items-center gap-1"><Calendar size={12} /> {policy?.effective_date || 'Effective Now'}</span>
       </div>
       <p className="text-muted small mb-4 flex-grow-1" style={{ fontSize: '0.85rem' }}>
-        Guidelines for maintaining operational security and productivity while working from non-traditional locations. Includes VPN requirements.
+        {policy?.summary || policy?.description || 'Company policy requirements and compliance rules.'}
       </p>
       <div className="d-flex gap-2">
         <Button variant="secondary" className="btn btn-white border flex-grow-1 text-blue fw-medium" style={{ fontSize: '0.8rem' }} onClick={() => setIsPolicyModalOpen(true)}>
           Read Full Policy
-        </Button>
-        <Button className="btn btn-primary bg-blue border-0 flex-grow-1 fw-medium" style={{ fontSize: '0.8rem' }} onClick={() => setIsAckModalOpen(true)}>
-          Acknowledge
         </Button>
       </div>
     </div>
@@ -81,39 +114,30 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
     <>
       <div className="dashboard-container">
 
-        <div className="mb-4">
-          <Breadcrumb items={['Dashboard', 'Compliance']} />
-          <h1 className="page-title m-0">Compliance & Policy Management</h1>
-          <p className="text-muted small m-0 mt-1">Review, acknowledge, and track company policies</p>
-        </div>
-
-        <div className="d-flex align-items-center mb-4 gap-3">
-          <div className="btn-group bg-white rounded-pill p-1 shadow-sm border">
-            <Button 
-              variant="ghost" 
-              className={`btn btn-sm rounded-pill px-4 fw-medium ${activeSubTab === 'By Employees' ? 'bg-blue-light text-blue' : 'text-muted'}`}
-              onClick={() => { setActiveSubTab('By Employees'); setSelectedPolicy(null); setSelectedEmployee(null); }}
-            >
-              By Employees
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <Breadcrumb items={['Dashboard', 'Compliance']} />
+            <h1 className="page-title m-0">Compliance & Policy Management</h1>
+            <p className="text-muted small m-0 mt-1">Review, acknowledge, and track company policies</p>
+          </div>
+          <div className="d-flex gap-3">
+            <Button variant="secondary" className="btn btn-light bg-white border fw-semibold d-flex align-items-center gap-2">
+              <Download size={16} /> Export
             </Button>
-            <Button 
-              variant="ghost" 
-              className={`btn btn-sm rounded-pill px-4 fw-medium ${activeSubTab === 'By Policies' ? 'bg-blue-light text-blue' : 'text-muted'}`}
-              onClick={() => { setActiveSubTab('By Policies'); setSelectedPolicy(null); setSelectedEmployee(null); }}
-            >
-              By Policies
+            <Button className="btn btn-primary bg-blue border-0 px-4 py-2 fw-semibold d-flex align-items-center shadow-sm" onClick={() => setIsPolicyModalOpen(true)}>
+              + Create Policy
             </Button>
           </div>
         </div>
 
-        <div className="row g-4 mb-5">
+        <div className="row g-3 mb-4">
           <div className="col-12 col-md-3">
             <div className="bg-white border rounded-3 p-4 d-flex gap-3 align-items-start h-100 shadow-sm">
               <div className={`rounded-3 d-flex justify-content-center align-items-center bg-blue-light text-blue`} style={{ width: '48px', height: '48px' }}>
                 <Users size={24} />
               </div>
               <div>
-                <h3 className="fw-bold mb-1 text-blue">142</h3>
+                <h3 className="fw-bold mb-1 text-blue">{totalEmployeesCount}</h3>
                 <div className="text-dark small fw-medium">Total Employees</div>
                 <div className="text-muted" style={{ fontSize: '0.75rem' }}>Across all departments</div>
               </div>
@@ -125,8 +149,8 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
                 <FileText size={24} />
               </div>
               <div>
-                <h3 className="fw-bold mb-1 text-purple">8</h3>
-                <div className="text-dark small fw-medium">Policies Assigned</div>
+                <h3 className="fw-bold mb-1 text-purple">{policies.length}</h3>
+                <div className="text-dark small fw-medium">Policy Assignments</div>
                 <div className="text-muted" style={{ fontSize: '0.75rem' }}>Active company policies</div>
               </div>
             </div>
@@ -137,9 +161,9 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
                 <CheckCircle2 size={24} />
               </div>
               <div>
-                <h3 className="fw-bold mb-1 text-success">1,024</h3>
+                <h3 className="fw-bold mb-1 text-success">{acknowledgedCount}</h3>
                 <div className="text-dark small fw-medium">Acknowledged</div>
-                <div className="text-muted" style={{ fontSize: '0.75rem' }}>86% acknowledgment rate</div>
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>Completed acknowledgments</div>
               </div>
             </div>
           </div>
@@ -149,10 +173,10 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
                 <AlertCircle size={24} />
               </div>
               <div>
-                <h3 className="fw-bold mb-1 text-warning-dark">168</h3>
+                <h3 className="fw-bold mb-1 text-warning-dark">{pendingCount}</h3>
                 <div className="text-dark small fw-medium">Pending Acknowledgment</div>
-                <div className="text-warning-dark d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
-                  <AlertCircle size={12} /> Needs attention
+                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                  {pendingCount === 0 ? 'All compliant' : 'Action required'}
                 </div>
               </div>
             </div>
@@ -161,132 +185,18 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
 
         <div className="mb-4 d-flex justify-content-between align-items-center">
           <FilterPills 
-            filters={filters}
+            filters={dynamicFilters}
             activeFilter={activeFilter}
             onFilterChange={handleFilterChange}
           />
-          {activeFilter === 'Acknowledgments' && (
-            <div className="d-flex gap-2">
-              <div className="position-relative">
-                <Search size={14} className="position-absolute text-muted" style={{left: 10, top: 10}} />
-                <input type="text" className="form-control form-control-sm text-muted ps-4" placeholder="Search policy or user..." style={{width: 200}} />
-              </div>
-              <select className="form-select form-select-sm text-muted" style={{width: 150}}>
-                <option>All Policies</option>
-              </select>
-            </div>
-          )}
         </div>
 
-        {activeFilter === 'Categories' && (
-          <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h6 className="fw-bold text-dark m-0">Policy Categories</h6>
-              <Button className="btn btn-sm btn-primary bg-blue border-0 px-3 fw-medium shadow-sm d-flex align-items-center">+ Add Category</Button>
-            </div>
-
-            <div className="bg-white rounded border overflow-hidden shadow-sm">
-              <div className="table-responsive">
-                <table className="table mb-0 align-middle">
-                  <thead>
-                    <tr className="bg-light">
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>NAME</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>DESCRIPTION</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>POLICIES</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 text-end pe-4" style={{ fontSize: '0.65rem' }}>ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {n: 'Health & Safety', d: 'Workplace health, safety regulations, and emergency procedures', p: 2},
-                      {n: 'HR & Benefits', d: 'Human resources policies, benefits, and employee programs', p: 3},
-                      {n: 'IT & Technology', d: 'IT usage policies, software guidelines, and technology standards', p: 2},
-                      {n: 'Security & Privacy', d: 'Updated: Policies related to data security, privacy, and information protection', p: 1},
-                      {n: 'Workplace Conduct', d: 'Guidelines for professional behavior and workplace ethics', p: 2}
-                    ].map((row, index) => (
-                      <tr key={index}>
-                        <td className="text-dark small fw-bold py-3 border-bottom-0 ps-4">{row.n}</td>
-                        <td className="text-muted small py-3 border-bottom-0">{row.d}</td>
-                        <td className="py-3 border-bottom-0">
-                          <span className="badge bg-blue-light text-blue rounded-pill px-2 py-1" style={{ fontSize: '0.7rem' }}>{row.p}</span>
-                        </td>
-                        <td className="py-3 border-bottom-0 text-end pe-4">
-                          <Button variant="icon" className="btn btn-light rounded border px-2 py-1 bg-white shadow-sm text-muted">
-                            <span style={{lineHeight: 1}}>...</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeFilter === 'Acknowledgments' && (
-          <div>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div className="d-flex align-items-center gap-2">
-                <h6 className="fw-bold text-dark m-0">All Acknowledgments</h6>
-                <span className="text-muted small">Showing 10 records</span>
-              </div>
-              <div className="d-flex gap-2">
-                <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark d-flex align-items-center shadow-sm">
-                  <Clock size={14} className="me-2" /> History
-                </Button>
-                <Button className="btn btn-sm btn-primary bg-blue border-0 px-3 fw-medium shadow-sm d-flex align-items-center">
-                  <Download size={14} className="me-2" /> Export Report
-                </Button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded border overflow-hidden shadow-sm">
-              <div className="table-responsive">
-                <table className="table mb-0 align-middle">
-                  <thead>
-                    <tr className="bg-light">
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>POLICY</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>USER</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ACKNOWLEDGED AT</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>IP ADDRESS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {p: 'Social Media Policy', u: 'Admin User', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Social Media Policy', u: 'John Doe', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Social Media Policy', u: 'Jane Doe sr.', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Social Media Policy', u: 'Srinivas Kandagatla', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Social Media Policy', u: 'Emp Test', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Acceptable Use of Technology Policy', u: 'Admin User', d: '1/1/1970, 5:30:00 AM'},
-                      {p: 'Remote Work Policy', u: 'Srinivas Kandagatla', d: '1/1/1970, 5:30:00 AM'}
-                    ].map((row, index) => (
-                      <tr key={index}>
-                        <td className="text-dark small fw-medium py-3 border-bottom-0 ps-4">{row.p}</td>
-                        <td className="text-dark small py-3 border-bottom-0">{row.u}</td>
-                        <td className="text-muted small py-3 border-bottom-0">{row.d}</td>
-                        <td className="text-muted small py-3 border-bottom-0">&mdash;</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeFilter === 'Policies' && activeSubTab === 'By Policies' && (
+        {activeFilter === 'Policies' && (
           <div className="position-relative">
             <div className="bg-white rounded border d-flex align-items-center justify-content-between p-1 mb-3 shadow-sm">
               <div className="position-relative flex-grow-1">
                 <Search size={16} className="position-absolute text-muted" style={{left: 12, top: 8}} />
                 <input type="text" className="form-control form-control-sm border-0 bg-transparent ps-5 py-2 shadow-none" placeholder="Search policy name..." />
-              </div>
-              <div style={{width: '120px', borderLeft: '1px solid #dee2e6'}} className="ps-2">
-                <select className="form-select form-select-sm border-0 bg-transparent text-dark fw-medium shadow-none">
-                  <option>All Status</option>
-                </select>
               </div>
             </div>
 
@@ -296,169 +206,54 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
                   <thead>
                     <tr className="bg-light">
                       <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>POLICY NAME</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>TOTAL ASSIGNED</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ACKNOWLEDGED</th>
-                      {selectedPolicy ? (
-                        <>
-                          <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PROGRESS</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PENDING</th>
-                          <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>COVERAGE</th>
-                          <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>STATUS</th>
-                          <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 text-end" style={{ fontSize: '0.65rem' }}>ACTION</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {n: 'Code of Conduct', a: 142, ac: 138, p: 4, pct: 97, stat: 'Partial'},
-                      {n: 'Data Privacy & GDPR Policy', a: 142, ac: 121, p: 21, pct: 85, stat: 'Partial'},
-                      {n: 'Remote Work Policy', a: 98, ac: 85, p: 13, pct: 87, stat: 'Partial'},
-                      {n: 'Anti-Harassment Policy', a: 142, ac: 140, p: 2, pct: 99, stat: 'Partial'},
-                      {n: 'IT Security Policy', a: 142, ac: 110, p: 32, pct: 77, stat: 'Partial'},
-                      {n: 'Leave & Attendance Policy', a: 142, ac: 136, p: 6, pct: 96, stat: 'Partial'},
-                      {n: 'Expense Reimbursement Policy', a: 87, ac: 72, p: 15, pct: 83, stat: 'Partial'},
-                      {n: 'Grievance Redressal Policy', a: 142, ac: 122, p: 20, pct: 86, stat: 'Partial'}
-                    ].map((row, index) => (
-                      <tr key={index} style={{cursor: 'pointer'}} onClick={() => setSelectedPolicy(row.n)}>
-                        <td className="py-3 border-bottom-0 ps-4">
-                          <div className="d-flex align-items-center gap-2">
-                            <div className="bg-purple-light text-purple rounded p-1"><FileText size={14} /></div>
-                            <span className="text-dark small fw-medium">{row.n}</span>
-                          </div>
-                        </td>
-                        <td className="text-dark small fw-bold py-3 border-bottom-0">{row.a}</td>
-                        <td className="text-success small fw-bold py-3 border-bottom-0">{row.ac}</td>
-                        {selectedPolicy ? (
-                          <td className="py-3 border-bottom-0" style={{width: '200px'}}>
-                            <div className="progress bg-light rounded-pill" style={{ height: '4px' }}>
-                              <div className="progress-bar bg-success rounded-pill" role="progressbar" style={{ width: `${row.pct}%` }}></div>
-                            </div>
-                          </td>
-                        ) : (
-                          <>
-                            <td className="text-warning-dark small fw-bold py-3 border-bottom-0">{row.p}</td>
-                            <td className="py-3 border-bottom-0" style={{width: '200px'}}>
-                              <div className="d-flex align-items-center gap-2">
-                                <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
-                                  <div className={`progress-bar ${row.pct > 90 ? 'bg-success' : 'bg-warning'}`} role="progressbar" style={{ width: `${row.pct}%` }}></div>
-                                </div>
-                                <span className="small text-muted" style={{fontSize: '0.7rem'}}>{row.pct}%</span>
-                              </div>
-                            </td>
-                            <td className="py-3 border-bottom-0">
-                              <span className="badge bg-warning-light text-warning-dark rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1" style={{ fontSize: '0.65rem' }}>
-                                <div className="rounded-circle bg-warning-dark" style={{width: 4, height: 4}}></div>
-                                {row.stat}
-                              </span>
-                            </td>
-                            <td className="py-3 border-bottom-0 text-end">
-                              <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark shadow-sm">View</Button>
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeFilter === 'Policies' && activeSubTab === 'By Employees' && (
-          <div className="position-relative">
-            <div className="bg-white rounded border d-flex align-items-center justify-content-between p-1 mb-3 shadow-sm">
-              <div className="position-relative flex-grow-1">
-                <Search size={16} className="position-absolute text-muted" style={{left: 12, top: 8}} />
-                <input type="text" className="form-control form-control-sm border-0 bg-transparent ps-5 py-2 shadow-none" placeholder="Search employee name or ID..." />
-              </div>
-              <div className="d-flex align-items-center border-start ps-2 gap-2">
-                <div style={{width: '130px'}}>
-                  <select className="form-select form-select-sm border-0 bg-transparent text-dark fw-medium shadow-none">
-                    <option>All Departments</option>
-                  </select>
-                </div>
-                <div style={{width: '120px', borderLeft: '1px solid #dee2e6'}} className="ps-2">
-                  <select className="form-select form-select-sm border-0 bg-transparent text-dark fw-medium shadow-none">
-                    <option>All Status</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded border overflow-hidden shadow-sm">
-              <div className="table-responsive">
-                <table className="table table-hover mb-0 align-middle">
-                  <thead>
-                    <tr className="bg-light">
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>EMPLOYEE</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ASSIGNED</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ACKNOWLEDGED</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PENDING</th>
-                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PROGRESS</th>
+                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>VERSION</th>
+                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>CATEGORY</th>
+                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PRIORITY</th>
+                      <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>EFFECTIVE DATE</th>
                       <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>STATUS</th>
                       <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 text-end pe-4" style={{ fontSize: '0.65rem' }}>ACTION</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      {n: 'Srinivas Kandagatla', d: 'EMP011 • Engineering', a: 8, ac: 8, p: 0, pct: 100, initials: 'SK', color: 'success', stat: 'Compliant'},
-                      {n: 'Rahul Sharma', d: 'EMP002 • Engineering', a: 8, ac: 6, p: 2, pct: 75, initials: 'RS', color: 'warning-dark', stat: 'Non-Compliant'},
-                      {n: 'Priya Nair', d: 'EMP001 • Management', a: 8, ac: 8, p: 0, pct: 100, initials: 'PN', color: 'success', stat: 'Compliant'},
-                      {n: 'Ananya Reddy', d: 'EMP007 • Design', a: 8, ac: 5, p: 3, pct: 63, initials: 'AR', color: 'warning-dark', stat: 'Non-Compliant'},
-                      {n: 'Emp Test', d: 'EMP003 • HR', a: 8, ac: 8, p: 0, pct: 100, initials: 'ET', color: 'success', stat: 'Compliant'},
-                      {n: 'Kiran Patel', d: 'EMP014 • Finance', a: 8, ac: 7, p: 1, pct: 88, initials: 'KP', color: 'warning-dark', stat: 'Non-Compliant'},
-                      {n: 'Divya Menon', d: 'EMP019 • Marketing', a: 8, ac: 4, p: 4, pct: 50, initials: 'DM', color: 'warning-dark', stat: 'Non-Compliant'},
-                      {n: 'Arjun Varma', d: 'EMP023 • Engineering', a: 8, ac: 8, p: 0, pct: 100, initials: 'AV', color: 'success', stat: 'Compliant'}
-                    ].map((row, index) => (
-                      <tr key={index} style={{cursor: 'pointer'}} onClick={() => setSelectedEmployee(row.n)}>
-                        <td className="py-3 border-bottom-0 ps-4">
-                          <div className="d-flex align-items-center gap-3">
-                            <div className={`avatar-sm rounded-circle d-flex align-items-center justify-content-center bg-light text-${row.color} fw-bold`} style={{width: 32, height: 32, fontSize: '0.75rem'}}>{row.initials}</div>
-                            <div>
-                              <div className="fw-bold text-dark small">{row.n}</div>
-                              <div className="text-muted" style={{fontSize: '0.65rem'}}>{row.d}</div>
+                    {policies.map((p, idx) => {
+                      const title = p.title || `Policy #${p.id || idx + 1}`;
+                      const version = p.version || 'v1.0';
+                      const category = p.category_name || 'General';
+                      const priority = p.priority || 'medium';
+                      const effDate = p.effective_date || '2026-01-01';
+                      const status = p.status || 'active';
+
+                      return (
+                        <tr key={p.id || idx} style={{cursor: 'pointer'}} onClick={() => setSelectedPolicy(title)}>
+                          <td className="py-3 border-bottom-0 ps-4">
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="bg-purple-light text-purple rounded p-1"><FileText size={14} /></div>
+                              <span className="text-dark small fw-medium">{title}</span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="text-dark small fw-bold py-3 border-bottom-0">{row.a}</td>
-                        <td className="text-success small fw-bold py-3 border-bottom-0">{row.ac}</td>
-                        <td className="text-warning-dark small fw-bold py-3 border-bottom-0">{row.p}</td>
-                        <td className="py-3 border-bottom-0" style={{width: '180px'}}>
-                          <div className="d-flex align-items-center gap-2">
-                            <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
-                              <div className={`progress-bar bg-${row.color === 'success' ? 'success' : 'warning'}`} role="progressbar" style={{ width: `${row.pct}%` }}></div>
-                            </div>
-                            <span className="small text-muted" style={{fontSize: '0.7rem'}}>{row.pct}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 border-bottom-0">
-                          <span className={`badge bg-${row.color === 'success' ? 'success' : 'danger'}-light text-${row.color === 'success' ? 'success' : 'danger'} rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1`} style={{ fontSize: '0.65rem' }}>
-                            <div className={`rounded-circle bg-${row.color === 'success' ? 'success' : 'danger'}`} style={{width: 4, height: 4}}></div>
-                            {row.stat}
-                          </span>
-                        </td>
-                        <td className="py-3 border-bottom-0 text-end pe-4">
-                          <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark shadow-sm" style={{ fontSize: '0.7rem' }}>View Details</Button>
-                        </td>
+                          </td>
+                          <td className="text-muted small py-3 border-bottom-0">{version}</td>
+                          <td className="text-dark small fw-bold py-3 border-bottom-0">{category}</td>
+                          <td className="text-capitalize small fw-bold text-primary py-3 border-bottom-0">{priority}</td>
+                          <td className="text-muted small py-3 border-bottom-0">{effDate}</td>
+                          <td className="py-3 border-bottom-0">
+                            <span className="badge bg-success-light text-success rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1 text-capitalize" style={{ fontSize: '0.65rem' }}>
+                              {status}
+                            </span>
+                          </td>
+                          <td className="py-3 border-bottom-0 text-end pe-4">
+                            <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark shadow-sm">View</Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {policies.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="text-center py-4 text-muted">No policies found in database.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
-              </div>
-              <div className="p-3 border-top bg-white d-flex align-items-center justify-content-between">
-                <div className="small text-muted">Showing 1-8 of 142 employees</div>
-                <div className="d-flex gap-1">
-                  <Button variant="outline" className="btn btn-sm btn-white border text-muted px-2">&lsaquo;</Button>
-                  <Button className="btn btn-sm btn-primary bg-blue border-0 px-3">1</Button>
-                  <Button variant="outline" className="btn btn-sm btn-white border text-muted px-3">2</Button>
-                  <Button variant="outline" className="btn btn-sm btn-white border text-muted px-3">3</Button>
-                  <Button variant="outline" className="btn btn-sm btn-white border text-muted px-2">&rsaquo;</Button>
-                </div>
               </div>
             </div>
           </div>
@@ -466,12 +261,18 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
 
         {activeFilter === 'Pending' && (
           <div>
-            <h6 className="fw-bold text-dark mb-3">Policies Requiring your Acknowledgement</h6>
-            <div className="row g-4">
-              <div className="col-12 col-md-6 col-lg-4">{renderPolicyCard()}</div>
-              <div className="col-12 col-md-6 col-lg-4">{renderPolicyCard()}</div>
-              <div className="col-12 col-md-6 col-lg-4">{renderPolicyCard()}</div>
-            </div>
+            <h6 className="fw-bold text-dark mb-3">Policies Requiring your Acknowledgement ({pendingCount})</h6>
+            {policies.length > 0 ? (
+              <div className="row g-4">
+                {policies.map(p => (
+                  <div className="col-12 col-md-6 col-lg-4" key={p.id}>{renderPolicyCard(p)}</div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded border p-4 text-center text-muted">
+                No pending policy acknowledgments required.
+              </div>
+            )}
           </div>
         )}
 
@@ -482,15 +283,90 @@ const Compliance = ({ onTabChange, onNavigateHome }) => {
               <div className="col-12 col-md-3">
                 <div className="bg-white rounded border p-3 shadow-sm">
                   <div className="small text-muted mb-1" style={{ fontSize: '0.75rem' }}>Total Policies</div>
-                  <h3 className="fw-bold text-blue m-0">4</h3>
+                  <h3 className="fw-bold text-blue m-0">{policies.length}</h3>
                 </div>
               </div>
               <div className="col-12 col-md-3">
                 <div className="bg-white rounded border p-3 shadow-sm">
                   <div className="small text-muted mb-1" style={{ fontSize: '0.75rem' }}>Acknowledged</div>
-                  <h3 className="fw-bold text-success m-0">3</h3>
+                  <h3 className="fw-bold text-success m-0">{acknowledgedCount}</h3>
                 </div>
               </div>
+              <div className="col-12 col-md-3">
+                <div className="bg-white rounded border p-3 shadow-sm">
+                  <div className="small text-muted mb-1" style={{ fontSize: '0.75rem' }}>Pending</div>
+                  <h3 className="fw-bold text-warning-dark m-0">{pendingCount}</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeFilter === 'Categories' && (
+          <div>
+            <h6 className="fw-bold text-dark mb-3">My Compliance Categories ({categories.length})</h6>
+            <div className="row g-3">
+              {categories.map((cat, idx) => (
+                <div className="col-12 col-md-4" key={cat.id || idx}>
+                  <div className="bg-white rounded border p-4 shadow-sm h-100">
+                    <h5 className="fw-bold text-dark mb-2">{cat.name || 'Category'}</h5>
+                    <p className="text-muted small mb-3">{cat.description || 'Policy compliance category rules.'}</p>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span className="badge bg-blue-light text-blue rounded-pill px-2 py-1" style={{ fontSize: '0.7rem' }}>
+                        {cat.policy_count || 0} Policies
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {categories.length === 0 && (
+                <div className="col-12">
+                  <div className="bg-white rounded border p-4 text-center text-muted">
+                    No compliance categories found in database.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeFilter === 'Acknowledgments' && (
+          <div className="bg-white rounded border overflow-hidden shadow-sm">
+            <div className="p-3 border-bottom">
+              <h6 className="fw-bold text-dark m-0 small">Policy Acknowledgments ({acknowledgments.length})</h6>
+            </div>
+            <div className="table-responsive">
+              <table className="table table-hover mb-0 align-middle">
+                <thead>
+                  <tr className="bg-light">
+                    <th className="text-muted small fw-bold text-uppercase border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>POLICY</th>
+                    <th className="text-muted small fw-bold text-uppercase border-0 py-3" style={{ fontSize: '0.65rem' }}>USER</th>
+                    <th className="text-muted small fw-bold text-uppercase border-0 py-3" style={{ fontSize: '0.65rem' }}>STATUS</th>
+                    <th className="text-muted small fw-bold text-uppercase border-0 py-3 pe-4" style={{ fontSize: '0.65rem' }}>DATE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {acknowledgments.map((ack, idx) => (
+                    <tr key={ack.id || idx}>
+                      <td className="py-3 border-bottom-0 ps-4 text-dark small fw-bold">{ack.policy_title || `Policy #${ack.policy}`}</td>
+                      <td className="py-3 border-bottom-0 text-muted small">{ack.user_name || ack.user_email || 'User'}</td>
+                      <td className="py-3 border-bottom-0">
+                        <span className={`badge bg-${ack.acknowledged ? 'success' : 'warning'}-light text-${ack.acknowledged ? 'success' : 'warning-dark'} rounded-pill px-2 py-1`} style={{ fontSize: '0.65rem' }}>
+                          {ack.acknowledged ? 'Acknowledged' : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="py-3 border-bottom-0 pe-4 text-muted small">{ack.acknowledged_at ? ack.acknowledged_at.substring(0, 10) : 'Recently'}</td>
+                    </tr>
+                  ))}
+
+                  {acknowledgments.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="text-center py-4 text-muted">No policy acknowledgments found in database.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
