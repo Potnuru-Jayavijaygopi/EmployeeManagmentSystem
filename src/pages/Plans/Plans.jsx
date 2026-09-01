@@ -5,22 +5,71 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './Plans.css';
-import { invoices } from '../../data/plansConstants';
 import Button from '../../components/common/Button';
-import { subscriptionService, withFallback } from '../../services';
+import { subscriptionService } from '../../services';
 
 const Plans = () => {
   const [activeTab, setActiveTab] = useState('Invoices');
   const [modalType, setModalType] = useState(null); 
   const [plans, setPlans] = useState([]);
+  const [invoicesList, setInvoicesList] = useState([]);
 
   useEffect(() => {
-    const fetchPlans = async () => {
-      const plansList = await withFallback(subscriptionService.getPlans(), []);
-      setPlans(plansList);
+    const fetchPlansAndInvoices = async () => {
+      const [plansRes, invRes] = await Promise.allSettled([
+        subscriptionService.getPlans(),
+        subscriptionService.getHistory(),
+      ]);
+
+      if (plansRes.status === 'fulfilled') {
+        const plansList = plansRes.value;
+        const rawList = Array.isArray(plansList)
+          ? plansList
+          : Array.isArray(plansList?.data?.results)
+          ? plansList.data.results
+          : Array.isArray(plansList?.results)
+          ? plansList.results
+          : Array.isArray(plansList?.data)
+          ? plansList.data
+          : (plansList && typeof plansList === 'object' ? [plansList] : []);
+        setPlans(rawList);
+      } else {
+        setPlans([]);
+      }
+
+      if (invRes.status === 'fulfilled') {
+        const val = invRes.value;
+        const rawInvoices = Array.isArray(val)
+          ? val
+          : Array.isArray(val?.data?.results)
+          ? val.data.results
+          : Array.isArray(val?.results)
+          ? val.results
+          : Array.isArray(val?.data)
+          ? val.data
+          : (val && typeof val === 'object' && (val.id || val.plan) ? [val] : []);
+
+        const mappedInvoices = rawInvoices.map((inv) => ({
+          id: inv.stripe_invoice_id || `INV-2026-00${inv.id || '1'}`,
+          period: inv.plan?.display_name ? `${inv.plan.display_name} Subscription (${inv.plan.billing_cycle_display || 'Monthly'})` : (inv.action_display || inv.notes || inv.action || 'Subscription Invoice'),
+          date: inv.start_date || (inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 31, 2026'),
+          amount: (inv.plan?.price || inv.amount) ? `$${parseFloat(inv.plan?.price || inv.amount).toFixed(2)}` : '$19.00',
+          method: 'Stripe / Card',
+          status: inv.status_display || inv.status || 'Paid',
+        }));
+
+        setInvoicesList(mappedInvoices);
+      } else {
+        setInvoicesList([]);
+      }
     };
-    fetchPlans();
+    fetchPlansAndInvoices();
   }, []);
+
+  const activePlan = plans[0] || null;
+  const currentPlanName = activePlan ? (activePlan.display_name || activePlan.plan_name || activePlan.name) : 'Base';
+  const currentPlanPrice = activePlan ? `$${parseFloat(activePlan.price || 0).toFixed(2)}` : '$19.00';
+  const currentPlanSeats = activePlan ? (activePlan.max_employees ? `Up to ${activePlan.max_employees}` : 'Unlimited') : '10 Seats';
   const renderModal = () => {
     if (!modalType) return null;
 
@@ -39,62 +88,45 @@ const Plans = () => {
             </div>
 
             <div className="pricing-cards-container">
+              {plans.length > 0 ? (
+                plans.map((p) => {
+                  const pName = p.display_name || p.plan_name || p.name || 'Plan';
+                  const pPrice = parseFloat(p.price || 0).toFixed(0);
+                  const pDesc = p.description || 'Subscription plan';
+                  const maxEmp = p.max_employees ? `Up to ${p.max_employees} employees` : 'Unlimited employees';
+                  const featureObj = p.features && typeof p.features === 'object' ? p.features : {};
+                  const featureList = Object.keys(featureObj).filter((k) => featureObj[k] === true);
 
-              <div className="pricing-card shadow-sm">
-                <div className="pc-title">Base</div>
-                <div className="pc-desc">Perfect for small teams — 10 Employees, Basic Tracking</div>
-                <div className="pc-price">
-                  <span className="currency">$</span> 19 <span className="period">/mo</span>
-                </div>
-                <div className="pc-limit">Up to 10 employees</div>
+                  return (
+                    <div key={p.id || pName} className={`pricing-card ${p.is_recommended ? 'current' : 'shadow-sm'}`}>
+                      {p.is_recommended && <div className="current-plan-badge"><Check size={12} strokeWidth={3} /> Current Plan</div>}
+                      <div className="pc-title">{pName}</div>
+                      <div className="pc-desc">{pDesc}</div>
+                      <div className="pc-price">
+                        <span className="currency">$</span> {pPrice} <span className="period">/mo</span>
+                      </div>
+                      <div className="pc-limit">{maxEmp}</div>
 
-                <div className="pc-features">
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Attendance Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Basic Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Employee Management</div>
-                </div>
-                <Button variant="outline" className="pc-btn outline">Switch to BASE</Button>
-              </div>
-
-              <div className="pricing-card shadow-sm">
-                <div className="pc-title">Pro</div>
-                <div className="pc-desc">Complete HR solution — 50 Employees, Payroll & Leaves</div>
-                <div className="pc-price">
-                  <span className="currency">$</span> 49 <span className="period">/mo</span>
-                </div>
-                <div className="pc-limit">Up to 50 employees</div>
-
-                <div className="pc-features">
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Leave Management</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Payroll Management</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Attendance Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Basic Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Employee Management</div>
-                </div>
-                <Button className="pc-btn primary" onClick={() => setModalType('confirm')}>Switch to PRO</Button>
-              </div>
-
-              <div className="pricing-card current">
-                <div className="current-plan-badge"><Check size={12} strokeWidth={3} /> Current Plan</div>
-                <div className="pc-title">Premium</div>
-                <div className="pc-desc">Enterprise solution — Unlimited Employees, AI Analytics & Chat</div>
-                <div className="pc-price">
-                  <span className="currency">$</span> 99 <span className="period">/mo</span>
-                </div>
-                <div className="pc-limit">Unlimited employees</div>
-
-                <div className="pc-features">
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Team Chat</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Leave Management</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Payroll Management</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Attendance Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> AI Analytics</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Basic Tracking</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Employee Management</div>
-                  <div className="pc-feature-item"><Check size={16} className="check" /> Unlimited Employees</div>
-                </div>
-                <Button className="pc-btn current" onClick={() => setModalType(null)}><Check size={16} /> Current Plan</Button>
-              </div>
+                      <div className="pc-features">
+                        {featureList.length > 0 ? (
+                          featureList.map((fKey) => (
+                            <div key={fKey} className="pc-feature-item">
+                              <Check size={16} className="check" /> {fKey.replace(/_/g, ' ').toUpperCase()}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="pc-feature-item"><Check size={16} className="check" /> Basic Features</div>
+                        )}
+                      </div>
+                      <Button className={`pc-btn ${p.is_recommended ? 'current' : 'primary'}`} onClick={() => setModalType(null)}>
+                        {p.is_recommended ? 'Current Plan' : `Select ${pName}`}
+                      </Button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center p-4 text-slate">No active plans found in API.</div>
+              )}
             </div>
           </div>
         </div>
@@ -182,24 +214,24 @@ const Plans = () => {
 
       <div className="mb-4 pb-2">
         <h1 className="fw-bold m-0" style={{fontSize: '2rem'}}>Plans & Billing</h1>
-        <p className="text-slate mt-2 mb-0">Manage your subscription plan. You are currently on the <strong>Premium</strong> plan.</p>
+        <p className="text-slate mt-2 mb-0">Manage your subscription plan. You are currently on the <strong>{currentPlanName}</strong> plan.</p>
       </div>
 
       <div className="plans-kpi-grid">
         <div className="plans-kpi-card">
           <div className="kpi-title">CURRENT PLAN</div>
-          <div className="kpi-value">Premium</div>
-          <div className="kpi-subtext">Next cycle: Oct 12, 2024</div>
+          <div className="kpi-value">{currentPlanName}</div>
+          <div className="kpi-subtext">Active status</div>
         </div>
         <div className="plans-kpi-card">
-          <div className="kpi-title">THIS YEAR SPENT</div>
-          <div className="kpi-value">$5,988.00</div>
-          <div className="kpi-subtext">12 invoices paid</div>
+          <div className="kpi-title">PRICE / RATE</div>
+          <div className="kpi-value">{currentPlanPrice}</div>
+          <div className="kpi-subtext">Per month</div>
         </div>
         <div className="plans-kpi-card">
           <div className="kpi-title">ACTIVE EMPLOYEE SEATS</div>
-          <div className="kpi-value">Unlimited</div>
-          <div className="kpi-subtext">No limit</div>
+          <div className="kpi-value">{currentPlanSeats}</div>
+          <div className="kpi-subtext">Included seats</div>
         </div>
         <div className="plans-kpi-card">
           <div className="kpi-title">STORAGE USED</div>
@@ -262,39 +294,35 @@ const Plans = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices.map((inv, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <div className="invoice-id">{inv.id}</div>
-                          <div className="invoice-period">{inv.period}</div>
-                        </td>
-                        <td>{inv.date}</td>
-                        <td className="fw-bold text-dark">{inv.amount}</td>
-                        <td>
-                          {inv.method === 'Bank Transfer' ? (
-                            <span className="text-slate d-flex align-items-center gap-2" style={{fontSize: '0.85rem'}}>
-                              <CreditCard size={16} /> {inv.method}
-                            </span>
-                          ) : (
+                    {invoicesList.length > 0 ? (
+                      invoicesList.map((inv, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <div className="invoice-id">{inv.id}</div>
+                            <div className="invoice-period">{inv.period}</div>
+                          </td>
+                          <td>{inv.date}</td>
+                          <td className="fw-bold text-dark">{inv.amount}</td>
+                          <td>
                             <div className="payment-method-badge">
-                              <span className="card-icon">VISA</span> <span className="text-slate" style={{fontSize: '0.85rem'}}>Visa ···· 4242</span>
+                              <span className="card-icon">CARD</span> <span className="text-slate" style={{fontSize: '0.85rem'}}>{inv.method}</span>
                             </div>
-                          )}
-                        </td>
-                        <td>
-                          {inv.status === 'Paid' ? (
-                            <span className="status-badge-sm paid"><div className="status-dot"></div> Paid</span>
-                          ) : (
-                            <span className="status-badge-sm pending"><div className="status-dot"></div> Pending</span>
-                          )}
-                        </td>
-                        <td>
-                          <Button className="download-btn">
-                            {inv.status === 'Paid' ? <Download size={16} /> : <Clock size={16} />}
-                          </Button>
-                        </td>
+                          </td>
+                          <td>
+                            <span className="status-badge-sm paid"><div className="status-dot"></div> {inv.status}</span>
+                          </td>
+                          <td>
+                            <Button className="download-btn">
+                              <Download size={16} />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="text-center p-4 text-slate">No invoices found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -314,15 +342,15 @@ const Plans = () => {
                 <div className="tier-header">
                   <div>
                     <div className="active-badge"><div className="dot"></div> ACTIVE TIER</div>
-                    <div className="tier-title">Enterprise Blueprint</div>
-                    <div className="tier-desc">Full architectural control with unlimited historical ledger access and priority API throughput.</div>
+                    <div className="tier-title">{currentPlanName}</div>
+                    <div className="tier-desc">{activePlan?.description || 'Active subscription plan for your organization.'}</div>
                   </div>
                   <div className="tier-price-box">
-                    <div className="tier-price">$499.00</div>
-                    <div className="tier-billing">per month / billed annually</div>
+                    <div className="tier-price">{currentPlanPrice}</div>
+                    <div className="tier-billing">per month / {activePlan?.billing_cycle_display || 'Monthly'}</div>
                     <div className="tier-pill" style={{background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd'}}>
                       <div className="dot" style={{display:'inline-block', width:'6px', height:'6px', borderRadius:'50%', background:'#93c5fd', marginRight:'6px'}}></div> 
-                      Enterprise
+                      {currentPlanName}
                     </div>
                   </div>
                 </div>
@@ -330,7 +358,7 @@ const Plans = () => {
                 <div className="tier-details-grid">
                   <div className="tier-detail-box">
                     <div className="td-label">SEATS</div>
-                    <div className="td-value">Unlimited Employees</div>
+                    <div className="td-value">{currentPlanSeats}</div>
                   </div>
                   <div className="tier-detail-box">
                     <div className="td-label">RENEWAL</div>

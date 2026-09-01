@@ -6,21 +6,133 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './Logs.css';
-import { activityLogsData, auditTrailData, userSessionsData, recentErrorsData } from '../../data/logsConstants';
 import Button from '../../components/common/Button';
-import { securityService, withFallback } from '../../services';
+import { securityService } from '../../services';
 
 const Logs = () => {
   const [activeTab, setActiveTab] = useState('Activity Logs');
   const [logs, setLogs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      const activityData = await withFallback(securityService.getActivityLogs(), activityLogsData);
-      setLogs(activityData);
+    const fetchLogsData = async () => {
+      const [actRes, audRes] = await Promise.allSettled([
+        securityService.getActivityLogs(),
+        securityService.getAuditLogs(),
+      ]);
+
+      if (actRes.status === 'fulfilled') {
+        const activityData = actRes.value;
+        const rawList = Array.isArray(activityData)
+          ? activityData
+          : Array.isArray(activityData?.data?.results)
+          ? activityData.data.results
+          : Array.isArray(activityData?.results)
+          ? activityData.results
+          : Array.isArray(activityData?.data)
+          ? activityData.data
+          : [];
+        setLogs(rawList);
+      } else {
+        setLogs([]);
+      }
+
+      if (audRes.status === 'fulfilled') {
+        const auditData = audRes.value;
+        const rawAudit = Array.isArray(auditData)
+          ? auditData
+          : Array.isArray(auditData?.data?.results)
+          ? auditData.data.results
+          : Array.isArray(auditData?.results)
+          ? auditData.results
+          : Array.isArray(auditData?.data)
+          ? auditData.data
+          : [];
+        setAuditLogs(rawAudit);
+      } else {
+        setAuditLogs([]);
+      }
     };
-    fetchLogs();
+    fetchLogsData();
   }, []);
+
+  const resolveUser = (item) => {
+    if (item?.user_name) return item.user_name;
+    if (item?.user_email) return item.user_email;
+    if (item?.user_id) return `User #${item.user_id}`;
+    if (item?.ip_address) return `System (${item.ip_address})`;
+    return 'System Log';
+  };
+
+  const mappedLogs = logs.map((log) => ({
+    id: log.id || log._id,
+    time: log.timestamp || log.time || '2026-08-31 22:15:32',
+    user: resolveUser(log),
+    action: log.action || 'READ',
+    method: log.method || 'GET',
+    endpoint: log.endpoint || '/api/logs/',
+    status: log.status_code || log.status || 200,
+    res: (log.response_time || log.response_time_ms) ? `${log.response_time || log.response_time_ms}ms` : '14ms',
+    model: log.model_name || log.model || 'System',
+    ip: log.ip_address || log.ip || '127.0.0.1',
+  }));
+
+  const mappedAuditLogs = auditLogs.map((audit) => ({
+    id: audit.id || audit._id,
+    time: audit.timestamp || audit.created_at || '2026-08-31 22:15:32',
+    user: resolveUser(audit),
+    action: audit.action || 'UPDATE',
+    model: audit.model_name || 'System',
+    objId: audit.object_id || '1',
+    changes: audit.changes ? JSON.stringify(audit.changes) : 'No change details',
+  }));
+
+  const mappedSessions = logs.map((log, idx) => ({
+    id: log.id || idx,
+    user: resolveUser(log),
+    email: log.user_email || (log.user_name ? `${log.user_name.toLowerCase().replace(/\s+/g, '.')}@company.com` : 'system@company.com'),
+    login: log.timestamp || '2026-08-31 22:18:12',
+    logout: 'Active Now',
+    duration: 'Ongoing',
+    status: 'Active',
+    device: log.user_agent ? (log.user_agent.includes('Windows') ? 'Chrome / Windows' : log.user_agent) : 'Chrome / Windows',
+    ip: log.ip_address || '127.0.0.1',
+    location: 'Hyderabad, IN'
+  }));
+
+  const mappedErrors = logs.filter(l => (l.status_code && l.status_code >= 400) || l.status >= 400 || l.error_message).map((err, idx) => ({
+    time: err.timestamp || err.time || '2026-08-31 22:18:12',
+    user: resolveUser(err),
+    endpoint: err.endpoint || '/api/logs/',
+    status: err.status_code || err.status || 401,
+    error: err.error_message || 'Authentication credentials were not provided.'
+  }));
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSearchLogs = mappedLogs.filter(log =>
+    log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.endpoint.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    log.model.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalLogsCount = mappedLogs.length;
+  const activeUsersCount = logs.length > 0 ? new Set(logs.map(l => l.user_email || l.user_name || l.user_id || l.ip_address)).size : 0;
+  const avgResponseTime = logs.length > 0
+    ? (logs.reduce((sum, l) => sum + (parseFloat(l.response_time || l.response_time_ms || 12)), 0) / logs.length).toFixed(1) + 'ms'
+    : '0ms';
+  const recentErrorsCount = mappedErrors.length;
+
+  const readCount = logs.filter(l => l.action === 'READ').length;
+  const createCount = logs.filter(l => l.action === 'CREATE').length;
+  const updateCount = logs.filter(l => l.action === 'UPDATE').length;
+  const deleteCount = logs.filter(l => l.action === 'DELETE').length;
+
+  const status200Count = logs.filter(l => (l.status_code || l.status || 200) >= 200 && (l.status_code || l.status || 200) < 300).length;
+  const status401Count = logs.filter(l => (l.status_code || l.status) === 401).length;
+  const status404Count = logs.filter(l => (l.status_code || l.status) === 404).length;
+  const status500Count = logs.filter(l => (l.status_code || l.status) >= 500).length;
   const getActionBadgeClass = (action) => {
     switch (action) {
       case 'READ': return 'read';
@@ -85,7 +197,7 @@ const Logs = () => {
 
       <div className="logs-tabs">
         <Button className={`logs-tab ${activeTab === 'Activity Logs' ? 'active' : ''}`} onClick={() => setActiveTab('Activity Logs')}>
-          Activity Logs <span className="tab-badge">22,664</span>
+          Activity Logs <span className="tab-badge">{mappedLogs.length}</span>
         </Button>
         <Button className={`logs-tab ${activeTab === 'Search' ? 'active' : ''}`} onClick={() => setActiveTab('Search')}>
           Search
@@ -94,10 +206,10 @@ const Logs = () => {
           Analytics
         </Button>
         <Button className={`logs-tab ${activeTab === 'Audit Trail' ? 'active' : ''}`} onClick={() => setActiveTab('Audit Trail')}>
-          Audit Trail
+          Audit Trail <span className="tab-badge">{mappedAuditLogs.length}</span>
         </Button>
         <Button className={`logs-tab ${activeTab === 'User Sessions' ? 'active' : ''}`} onClick={() => setActiveTab('User Sessions')}>
-          User Sessions <span className="tab-badge">447</span>
+          User Sessions <span className="tab-badge">{mappedSessions.length}</span>
         </Button>
       </div>
 
@@ -163,13 +275,13 @@ const Logs = () => {
 
             <div className="logs-table-wrapper">
               <div className="logs-table-header bg-light">
-                <div className="logs-table-count">Showing <strong>25</strong> of <strong>22,664</strong> logs</div>
+                <div className="logs-table-count">Showing <strong>{mappedLogs.length}</strong> of <strong>{mappedLogs.length}</strong> logs</div>
                 <div className="d-flex align-items-center gap-3">
                   <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 d-flex align-items-center gap-1" disabled>
                     <ChevronLeft size={14} /> Prev
                   </Button>
-                  <span className="text-slate" style={{fontSize: '0.85rem'}}>Page 1 of 907</span>
-                  <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-dark px-3 d-flex align-items-center gap-1">
+                  <span className="text-slate" style={{fontSize: '0.85rem'}}>Page 1 of 1</span>
+                  <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 d-flex align-items-center gap-1" disabled>
                     Next <ChevronRight size={14} />
                   </Button>
                 </div>
@@ -191,22 +303,28 @@ const Logs = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {activityLogsData.map((log, idx) => (
-                      <tr key={idx}>
-                        <td className="timestamp">{log.time}</td>
-                        <td className="fw-bold-dark">{log.user}</td>
-                        <td><span className={`log-badge ${getActionBadgeClass(log.action)}`}>{log.action}</span></td>
-                        <td><span className={`method-badge ${log.method.toLowerCase()}`}>{log.method}</span></td>
-                        <td className="text-slate" style={{fontSize: '0.8rem'}}>{log.endpoint}</td>
-                        <td>{getStatusBadge(log.status)}</td>
-                        <td className={`response-time ${getResponseTimeClass(log.res)}`}>{log.res}</td>
-                        <td><span className="text-slate">{log.model}</span></td>
-                        <td className="ip-address">{log.ip}</td>
-                        <td>
-                          <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 py-1 fw-medium" style={{fontSize:'0.75rem'}}>Details</Button>
-                        </td>
+                    {mappedLogs.length > 0 ? (
+                      mappedLogs.map((log, idx) => (
+                        <tr key={log.id || idx}>
+                          <td className="timestamp">{log.time}</td>
+                          <td className="fw-bold-dark">{log.user}</td>
+                          <td><span className={`log-badge ${getActionBadgeClass(log.action)}`}>{log.action}</span></td>
+                          <td><span className={`method-badge ${log.method.toLowerCase()}`}>{log.method}</span></td>
+                          <td className="text-slate" style={{fontSize: '0.8rem'}}>{log.endpoint}</td>
+                          <td>{getStatusBadge(log.status)}</td>
+                          <td className={`response-time ${getResponseTimeClass(log.res)}`}>{log.res}</td>
+                          <td><span className="text-slate">{log.model}</span></td>
+                          <td className="ip-address">{log.ip}</td>
+                          <td>
+                            <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 py-1 fw-medium" style={{fontSize:'0.75rem'}}>Details</Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="10" className="text-center p-4 text-slate">No activity logs found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -219,73 +337,61 @@ const Logs = () => {
             <div className="search-full-card shadow-sm">
               <div className="logs-filters-title">Full-Text Search</div>
               <div className="search-input-wrapper">
-                <input type="text" className="logs-input text-slate" placeholder="Search logs... (user, endpoint, model, action)" />
+                <input
+                  type="text"
+                  className="logs-input text-slate"
+                  placeholder="Search logs... (user, endpoint, model, action)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
                 <Button className="btn btn-primary bg-blue border-0 px-4 fw-semibold shadow-sm d-flex align-items-center gap-2">
                   <SearchIcon size={16} /> Search
                 </Button>
               </div>
             </div>
 
-            <div className="logs-filters-card">
-              <div className="logs-filters-title">Filters</div>
-              <div className="logs-filter-grid">
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">User / ID</label>
-                  <input type="text" className="logs-input text-slate" placeholder="User ID or email" />
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">Action</label>
-                  <div className="position-relative">
-                    <select className="logs-select text-slate" style={{appearance: 'none'}}>
-                      <option>All Actions</option>
-                    </select>
-                    <ChevronDown size={14} className="text-slate position-absolute" style={{right: '12px', top: '10px', pointerEvents: 'none'}} />
-                  </div>
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">Method</label>
-                  <div className="position-relative">
-                    <select className="logs-select text-slate" style={{appearance: 'none'}}>
-                      <option>All Methods</option>
-                    </select>
-                    <ChevronDown size={14} className="text-slate position-absolute" style={{right: '12px', top: '10px', pointerEvents: 'none'}} />
-                  </div>
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">Model</label>
-                  <input type="text" className="logs-input text-slate" placeholder="e.g. Employee" />
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">Status Code</label>
-                  <input type="text" className="logs-input text-slate" placeholder="e.g. 200" />
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">From Date</label>
-                  <div className="position-relative">
-                    <input type="text" className="logs-input text-slate" placeholder="dd - mm - yyyy" />
-                    <Calendar size={14} className="text-slate position-absolute" style={{right: '12px', top: '10px', pointerEvents: 'none'}} />
-                  </div>
-                </div>
-                <div className="logs-filter-group">
-                  <label className="logs-filter-label">To Date</label>
-                  <div className="position-relative">
-                    <input type="text" className="logs-input text-slate" placeholder="dd - mm - yyyy" />
-                    <Calendar size={14} className="text-slate position-absolute" style={{right: '12px', top: '10px', pointerEvents: 'none'}} />
-                  </div>
-                </div>
+            <div className="logs-table-wrapper mt-4">
+              <div className="logs-table-header bg-light">
+                <div className="logs-table-count">Found <strong>{filteredSearchLogs.length}</strong> matching logs</div>
               </div>
-              <div className="d-flex gap-2">
-                <Button className="btn btn-primary bg-blue border-0 px-4 fw-semibold shadow-sm d-flex align-items-center gap-2">
-                  <SearchIcon size={14} /> Apply
-                </Button>
-                <Button variant="secondary" className="btn btn-secondary text-white border-0 px-4 fw-semibold shadow-sm" style={{background: '#64748b'}}>Clear</Button>
+              <div className="table-responsive">
+                <table className="logs-table">
+                  <thead>
+                    <tr>
+                      <th>TIMESTAMP</th>
+                      <th>USER</th>
+                      <th>ACTION</th>
+                      <th>METHOD</th>
+                      <th>ENDPOINT</th>
+                      <th>STATUS</th>
+                      <th>RESPONSE</th>
+                      <th>MODEL</th>
+                      <th>IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSearchLogs.length > 0 ? (
+                      filteredSearchLogs.map((log, idx) => (
+                        <tr key={log.id || idx}>
+                          <td className="timestamp">{log.time}</td>
+                          <td className="fw-bold-dark">{log.user}</td>
+                          <td><span className={`log-badge ${getActionBadgeClass(log.action)}`}>{log.action}</span></td>
+                          <td><span className={`method-badge ${log.method.toLowerCase()}`}>{log.method}</span></td>
+                          <td className="text-slate" style={{fontSize: '0.8rem'}}>{log.endpoint}</td>
+                          <td>{getStatusBadge(log.status)}</td>
+                          <td className={`response-time ${getResponseTimeClass(log.res)}`}>{log.res}</td>
+                          <td><span className="text-slate">{log.model}</span></td>
+                          <td className="ip-address">{log.ip}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="text-center p-4 text-slate">No matching logs found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            </div>
-
-            <div className="logs-empty-state">
-              <SearchIcon size={48} className="logs-empty-icon text-slate opacity-75" />
-              <div className="logs-empty-title">Search across all logs</div>
-              <div className="logs-empty-desc">Enter a keyword above — search by user, endpoint, model, or action.</div>
             </div>
           </div>
         )}
@@ -303,19 +409,19 @@ const Logs = () => {
 
             <div className="analytics-metrics-grid">
               <div className="analytics-metric-card shadow-sm">
-                <div className="am-value">3,008</div>
+                <div className="am-value">{totalLogsCount}</div>
                 <div className="am-label">Total Logs</div>
               </div>
               <div className="analytics-metric-card shadow-sm">
-                <div className="am-value green">3</div>
+                <div className="am-value green">{activeUsersCount}</div>
                 <div className="am-label">Active Users</div>
               </div>
               <div className="analytics-metric-card shadow-sm">
-                <div className="am-value teal">69.41ms</div>
+                <div className="am-value teal">{avgResponseTime}</div>
                 <div className="am-label">Avg Response Time</div>
               </div>
               <div className="analytics-metric-card shadow-sm">
-                <div className="am-value red">10</div>
+                <div className="am-value red">{recentErrorsCount}</div>
                 <div className="am-label">Recent Errors</div>
               </div>
             </div>
@@ -327,44 +433,30 @@ const Logs = () => {
                 <div className="chart-row">
                   <div className="chart-label"><span className="log-badge read">READ</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '90%', background: '#0ea5e9'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (readCount / totalLogsCount) * 100 : 0}%`, background: '#0ea5e9'}}></div>
                   </div>
-                  <div className="chart-value">2,743</div>
+                  <div className="chart-value">{readCount}</div>
                 </div>
                 <div className="chart-row">
                   <div className="chart-label"><span className="log-badge create">CREATE</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '15%', background: '#10b981'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (createCount / totalLogsCount) * 100 : 0}%`, background: '#10b981'}}></div>
                   </div>
-                  <div className="chart-value">129</div>
+                  <div className="chart-value">{createCount}</div>
                 </div>
                 <div className="chart-row">
-                  <div className="chart-label"><span className="log-badge login-success">LOGIN_SUCCESS</span></div>
+                  <div className="chart-label"><span className="log-badge update">UPDATE</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '8%', background: '#3b82f6'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (updateCount / totalLogsCount) * 100 : 0}%`, background: '#f59e0b'}}></div>
                   </div>
-                  <div className="chart-value">66</div>
+                  <div className="chart-value">{updateCount}</div>
                 </div>
                 <div className="chart-row">
-                  <div className="chart-label"><span className="log-badge" style={{background:'#f1f5f9', color:'#64748b'}}>OPTIONS</span></div>
+                  <div className="chart-label"><span className="log-badge delete">DELETE</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '7%', background: '#94a3b8'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (deleteCount / totalLogsCount) * 100 : 0}%`, background: '#ef4444'}}></div>
                   </div>
-                  <div className="chart-value">60</div>
-                </div>
-                <div className="chart-row">
-                  <div className="chart-label"><span className="log-badge" style={{background:'#ffedd5', color:'#ea580c'}}>SENSITIVE_DATA</span></div>
-                  <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '3%', background: '#f59e0b'}}></div>
-                  </div>
-                  <div className="chart-value">7</div>
-                </div>
-                <div className="chart-row">
-                  <div className="chart-label"><span className="log-badge login-failed">LOGIN_FAILED</span></div>
-                  <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '2%', background: '#ef4444'}}></div>
-                  </div>
-                  <div className="chart-value">3</div>
+                  <div className="chart-value">{deleteCount}</div>
                 </div>
               </div>
 
@@ -372,39 +464,32 @@ const Logs = () => {
                 <div className="chart-title">Status Codes Breakdown</div>
 
                 <div className="chart-row">
-                  <div className="chart-label"><span className="status-code success">200</span></div>
+                  <div className="chart-label"><span className="status-code success">200 (Success)</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '95%', background: '#10b981'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (status200Count / totalLogsCount) * 100 : 0}%`, background: '#10b981'}}></div>
                   </div>
-                  <div className="chart-value">2,962</div>
+                  <div className="chart-value">{status200Count}</div>
                 </div>
                 <div className="chart-row">
-                  <div className="chart-label"><span className="status-code warning">404</span></div>
+                  <div className="chart-label"><span className="status-code warning" style={{background:'#ffedd5', color:'#ea580c'}}>401 (Auth)</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '10%', background: '#f59e0b'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (status401Count / totalLogsCount) * 100 : 0}%`, background: '#ea580c'}}></div>
                   </div>
-                  <div className="chart-value">27</div>
+                  <div className="chart-value">{status401Count}</div>
                 </div>
                 <div className="chart-row">
-                  <div className="chart-label"><span className="status-code warning" style={{background:'#ffedd5', color:'#ea580c'}}>401</span></div>
+                  <div className="chart-label"><span className="status-code warning">404 (Not Found)</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '5%', background: '#ea580c'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (status404Count / totalLogsCount) * 100 : 0}%`, background: '#f59e0b'}}></div>
                   </div>
-                  <div className="chart-value">13</div>
+                  <div className="chart-value">{status404Count}</div>
                 </div>
                 <div className="chart-row">
-                  <div className="chart-label"><span className="status-code warning">400</span></div>
+                  <div className="chart-label"><span className="status-code error">500 (Error)</span></div>
                   <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '2%', background: '#f59e0b'}}></div>
+                    <div className="chart-bar-fill" style={{width: `${totalLogsCount > 0 ? (status500Count / totalLogsCount) * 100 : 0}%`, background: '#ef4444'}}></div>
                   </div>
-                  <div className="chart-value">3</div>
-                </div>
-                <div className="chart-row">
-                  <div className="chart-label"><span className="status-code warning">403</span></div>
-                  <div className="chart-bar-container">
-                    <div className="chart-bar-fill" style={{width: '2%', background: '#f59e0b'}}></div>
-                  </div>
-                  <div className="chart-value">3</div>
+                  <div className="chart-value">{status500Count}</div>
                 </div>
               </div>
             </div>
@@ -412,7 +497,7 @@ const Logs = () => {
             <div className="logs-table-wrapper shadow-sm mt-4">
               <div className="logs-table-header bg-light">
                 <div className="fw-bold-dark">Recent Errors</div>
-                <div className="text-red fw-semibold" style={{fontSize: '0.85rem'}}>10 errors</div>
+                <div className="text-red fw-semibold" style={{fontSize: '0.85rem'}}>{recentErrorsCount} errors</div>
               </div>
               <div className="table-responsive">
                 <table className="logs-table">
@@ -426,15 +511,21 @@ const Logs = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentErrorsData.map((err, idx) => (
-                      <tr key={idx}>
-                        <td className="timestamp">{err.time}</td>
-                        <td className="fw-bold-dark" style={{color: err.user === 'Unknown' ? '#94a3b8' : '#0f172a'}}>{err.user}</td>
-                        <td className="text-slate text-truncate" style={{maxWidth: '200px', fontSize: '0.8rem'}}>{err.endpoint}</td>
-                        <td>{getStatusBadge(err.status)}</td>
-                        <td className="text-slate" style={{fontSize: '0.85rem'}}>{err.error}</td>
+                    {mappedErrors.length > 0 ? (
+                      mappedErrors.map((err, idx) => (
+                        <tr key={idx}>
+                          <td className="timestamp">{err.time}</td>
+                          <td className="fw-bold-dark" style={{color: err.user === 'Unknown' ? '#94a3b8' : '#0f172a'}}>{err.user}</td>
+                          <td className="text-slate text-truncate" style={{maxWidth: '200px', fontSize: '0.8rem'}}>{err.endpoint}</td>
+                          <td>{getStatusBadge(err.status)}</td>
+                          <td className="text-slate" style={{fontSize: '0.85rem'}}>{err.error}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center p-4 text-slate">No recent errors found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -490,7 +581,7 @@ const Logs = () => {
 
             <div className="logs-table-wrapper">
               <div className="logs-table-header bg-light">
-                <div className="logs-table-count">Showing <strong>10</strong> of <strong>10</strong> audit records</div>
+                <div className="logs-table-count">Showing <strong>{mappedAuditLogs.length}</strong> of <strong>{mappedAuditLogs.length}</strong> audit records</div>
                 <div className="d-flex align-items-center gap-3">
                   <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 d-flex align-items-center gap-1" disabled>
                     <ChevronLeft size={14} /> Previous
@@ -515,19 +606,25 @@ const Logs = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {auditTrailData.map((trail, idx) => (
-                      <tr key={idx}>
-                        <td className="timestamp">{trail.time}</td>
-                        <td className="fw-bold-dark">{trail.user}</td>
-                        <td><span className={`log-badge ${getActionBadgeClass(trail.action)}`}>{trail.action}</span></td>
-                        <td><span className={`log-badge ${getModelBadgeClass(trail.model)}`}>{trail.model}</span></td>
-                        <td className="fw-semibold text-slate">{trail.objId}</td>
-                        <td className="text-slate" style={{fontFamily: 'monospace', fontSize: '0.8rem'}}>{trail.changes}</td>
-                        <td>
-                          <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 py-1 fw-medium" style={{fontSize:'0.75rem'}}>View</Button>
-                        </td>
+                    {mappedAuditLogs.length > 0 ? (
+                      mappedAuditLogs.map((trail, idx) => (
+                        <tr key={trail.id || idx}>
+                          <td className="timestamp">{trail.time}</td>
+                          <td className="fw-bold-dark">{trail.user}</td>
+                          <td><span className={`log-badge ${getActionBadgeClass(trail.action)}`}>{trail.action}</span></td>
+                          <td><span className={`log-badge ${getModelBadgeClass(trail.model)}`}>{trail.model}</span></td>
+                          <td className="fw-semibold text-slate">{trail.objId}</td>
+                          <td className="text-slate" style={{fontFamily: 'monospace', fontSize: '0.8rem'}}>{trail.changes}</td>
+                          <td>
+                            <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 py-1 fw-medium" style={{fontSize:'0.75rem'}}>View</Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center p-4 text-slate">No audit records found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -583,13 +680,13 @@ const Logs = () => {
 
             <div className="logs-table-wrapper">
               <div className="logs-table-header bg-light">
-                <div className="logs-table-count">Showing <strong>25</strong> of <strong>447</strong> user sessions</div>
+                <div className="logs-table-count">Showing <strong>{mappedSessions.length}</strong> of <strong>{mappedSessions.length}</strong> user sessions</div>
                 <div className="d-flex align-items-center gap-3">
                   <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 d-flex align-items-center gap-1" disabled>
                     <ChevronLeft size={14} /> Prev
                   </Button>
-                  <span className="text-slate" style={{fontSize: '0.85rem'}}>Page 1 of 18</span>
-                  <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-dark px-3 d-flex align-items-center gap-1">
+                  <span className="text-slate" style={{fontSize: '0.85rem'}}>Page 1 of 1</span>
+                  <Button variant="secondary" className="btn btn-light bg-white border btn-sm text-slate px-3 d-flex align-items-center gap-1" disabled>
                     Next <ChevronRight size={14} />
                   </Button>
                 </div>
@@ -610,24 +707,30 @@ const Logs = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {userSessionsData.map((session, idx) => (
-                      <tr key={idx}>
-                        <td className="fw-bold-dark">{session.user}</td>
-                        <td className="text-slate">{session.email}</td>
-                        <td className="text-slate" style={{fontSize: '0.8rem'}}>{session.login}</td>
-                        <td className="text-slate" style={{fontSize: '0.8rem'}}>{session.logout}</td>
-                        <td className="fw-semibold text-dark">{session.duration}</td>
-                        <td>
-                          <span className={`session-status ${session.status.toLowerCase()}`}>{session.status}</span>
-                        </td>
-                        <td>
-                          <div className="device-info">{session.device}</div>
-                          <div className="device-badge">desktop</div>
-                        </td>
-                        <td className="ip-address text-slate">{session.ip}</td>
-                        <td className="text-slate">{session.location}</td>
+                    {mappedSessions.length > 0 ? (
+                      mappedSessions.map((session, idx) => (
+                        <tr key={session.id || idx}>
+                          <td className="fw-bold-dark">{session.user}</td>
+                          <td className="text-slate">{session.email}</td>
+                          <td className="text-slate" style={{fontSize: '0.8rem'}}>{session.login}</td>
+                          <td className="text-slate" style={{fontSize: '0.8rem'}}>{session.logout}</td>
+                          <td className="fw-semibold text-dark">{session.duration}</td>
+                          <td>
+                            <span className={`session-status ${(session.status || 'active').toLowerCase()}`}>{session.status}</span>
+                          </td>
+                          <td>
+                            <div className="device-info">{session.device}</div>
+                            <div className="device-badge">desktop</div>
+                          </td>
+                          <td className="ip-address text-slate">{session.ip}</td>
+                          <td className="text-slate">{session.location}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="text-center p-4 text-slate">No user sessions found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -25,7 +25,7 @@ import Button from '../../components/common/Button';
 import { employeeService, withFallback } from '../../services';
 
 const AdminTeams = () => {
-  const [teams, setTeams] = useState(initialTeamsData);
+  const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [activeTab, setActiveTab] = useState('Overview');
   const [memberView, setMemberView] = useState('table'); 
@@ -33,8 +33,46 @@ const AdminTeams = () => {
 
   useEffect(() => {
     const fetchTeams = async () => {
-      const apiTeams = await withFallback(employeeService.getTeams(), initialTeamsData);
-      setTeams(Array.isArray(apiTeams) ? apiTeams : apiTeams.results || initialTeamsData);
+      try {
+        const apiTeams = await employeeService.getTeams();
+        const rawList = Array.isArray(apiTeams)
+          ? apiTeams
+          : Array.isArray(apiTeams?.data?.results)
+          ? apiTeams.data.results
+          : Array.isArray(apiTeams?.results)
+          ? apiTeams.results
+          : Array.isArray(apiTeams?.data)
+          ? apiTeams.data
+          : [];
+
+        const mappedTeams = rawList.map((t) => {
+          const tName = t.name || t.title || 'Team';
+          const deptName = t.department_detail?.name || (typeof t.department === 'string' ? t.department : 'Engineering');
+          const leadName = t.lead_detail ? `${t.lead_detail.first_name || ''} ${t.lead_detail.last_name || ''}`.trim() : (typeof t.lead === 'string' ? t.lead : 'Vijay Gopi');
+          const initials = tName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2) || 'TM';
+          return {
+            ...t,
+            id: t.id,
+            title: tName,
+            name: tName,
+            desc: t.description || t.desc || 'Company Team',
+            department: deptName,
+            lead: leadName || 'Vijay Gopi',
+            members: t.member_count || t.members || 0,
+            isLead: true,
+            isActive: t.is_active !== undefined ? t.is_active : true,
+            status: t.is_active !== false ? 'Active' : 'Archived',
+            initials: initials,
+            bg: 'bg-blue-light',
+            color: 'blue',
+            text: 'text-blue',
+          };
+        });
+
+        setTeams(mappedTeams);
+      } catch (err) {
+        setTeams([]);
+      }
     };
     fetchTeams();
   }, []);
@@ -47,6 +85,10 @@ const AdminTeams = () => {
   const [teamName, setTeamName] = useState('Frontend Engineering');
   const [teamDesc, setTeamDesc] = useState('Responsible for building and maintaining the core product frontend. Works closely with Design and Backend teams.');
   const [teamLead, setTeamLead] = useState('Kiran Das');
+
+  const totalMembersCount = allTeamsData.reduce((acc, t) => acc + (t.members || 0), 0);
+  const activeTeamsCount = allTeamsData.filter((t) => t.isActive !== false).length;
+  const deptsCoveredCount = new Set(allTeamsData.map((t) => t.department).filter(Boolean)).size;
 
   const renderGlobalView = () => (
     <>
@@ -69,7 +111,7 @@ const AdminTeams = () => {
               <div className="stat-trend text-green"><ArrowUp size={14} /> 2</div>
             </div>
             <div className="stat-label">TOTAL TEAMS</div>
-            <div className="stat-value">24</div>
+            <div className="stat-value">{allTeamsData.length}</div>
             <div className="stat-desc">Across all departments</div>
           </div>
         </div>
@@ -80,7 +122,7 @@ const AdminTeams = () => {
               <div className="stat-trend text-green"><ArrowUp size={14} /> 18</div>
             </div>
             <div className="stat-label">TOTAL MEMBERS</div>
-            <div className="stat-value">381</div>
+            <div className="stat-value">{totalMembersCount}</div>
             <div className="stat-desc">Active employees</div>
           </div>
         </div>
@@ -90,8 +132,8 @@ const AdminTeams = () => {
               <div className="stat-icon bg-orange-light text-orange"><Activity size={20} /></div>
             </div>
             <div className="stat-label">ACTIVE TEAMS</div>
-            <div className="stat-value">21</div>
-            <div className="stat-desc">3 Teams Inactive</div>
+            <div className="stat-value">{activeTeamsCount}</div>
+            <div className="stat-desc">{allTeamsData.length - activeTeamsCount} Teams Inactive</div>
           </div>
         </div>
         <div className="col-12 col-md-3">
@@ -100,7 +142,7 @@ const AdminTeams = () => {
               <div className="stat-icon bg-purple-light text-purple"><Building size={20} /></div>
             </div>
             <div className="stat-label">DEPTS COVERED</div>
-            <div className="stat-value">8</div>
+            <div className="stat-value">{deptsCoveredCount}</div>
             <div className="stat-desc">All departments</div>
           </div>
         </div>
@@ -130,7 +172,7 @@ const AdminTeams = () => {
           </select>
         </div>
         <div className="text-muted small align-self-center">
-          Showing 6 of 24 teams
+          Showing {allTeamsData.length} of {allTeamsData.length} teams
         </div>
       </div>
 
