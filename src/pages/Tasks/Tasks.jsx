@@ -11,18 +11,30 @@ import {
 } from 'lucide-react';
 import './Tasks.css';
 import Button from '../../components/common/Button';
-import { initialTasks } from '../../data/initialTasks';
-import { tasksStats, taskFilters } from '../../data/tasksData';
-import { dashboardService, withFallback } from '../../services';
+import { taskFilters } from '../../data/tasksData';
+import { dashboardService } from '../../services';
 
 const Tasks = ({ onTabChange, onNavigateHome }) => {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState([]);
   const [activeFilter, setActiveFilter] = useState('All');
 
   useEffect(() => {
     const fetchTasks = async () => {
-      const apiTasks = await withFallback(dashboardService.getTasks(), initialTasks);
-      setTasks(Array.isArray(apiTasks) ? apiTasks : apiTasks.results || initialTasks);
+      try {
+        const apiTasks = await dashboardService.getTasks();
+        const rawList = Array.isArray(apiTasks)
+          ? apiTasks
+          : Array.isArray(apiTasks?.data?.results)
+          ? apiTasks.data.results
+          : Array.isArray(apiTasks?.results)
+          ? apiTasks.results
+          : Array.isArray(apiTasks?.data)
+          ? apiTasks.data
+          : [];
+        setTasks(rawList);
+      } catch (err) {
+        setTasks([]);
+      }
     };
     fetchTasks();
   }, []);
@@ -94,6 +106,39 @@ const Tasks = ({ onTabChange, onNavigateHome }) => {
     return <span className="badge-pill bg-light border text-dark fw-semibold px-2 py-1 ms-2">{priority}</span>;
   };
 
+  const mappedTasks = tasks.map((t, idx) => ({
+    id: t.id ? `TSK-${t.id}` : `TSK-${idx + 1}`,
+    rawId: t.id,
+    title: t.title || 'Task Item',
+    description: t.description || '',
+    status: t.status === 'Completed' || t.status === 'COMPLETED' ? 'COMPLETED' : (t.status === 'In Progress' ? 'IN_PROGRESS' : 'TODO'),
+    priority: t.priority ? t.priority.toUpperCase() : 'MEDIUM',
+    assignee: t.assigned_to_name || 'System Admin',
+    date: t.due_date ? t.due_date.split(' ')[0] : '2025-06-30',
+    repo: t.project_name ? `repo/${t.project_name.toLowerCase().replace(/\s+/g, '-')}` : 'main-repository',
+    branch: 'main',
+    pr: t.description ? `#PR-${t.id || 1}` : '#PR-1',
+    commit: 'feat: live backend sync',
+    actionStatus: 'Success',
+    devopsType: 'github',
+    isOverdue: t.is_overdue || false
+  }));
+
+  const dynamicStats = [
+    { title: "Active Tasks", mainValue: mappedTasks.length, subtitle: `${mappedTasks.filter(t => t.status !== 'COMPLETED').length} active in sprint`, icon: <CheckSquare size={18} />, colorTheme: "primary" },
+    { title: "In Progress", mainValue: mappedTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'TODO').length, subtitle: "Tasks currently being worked on", icon: <Clock size={18} />, colorTheme: "warning" },
+    { title: "Completed Tasks", mainValue: mappedTasks.filter(t => t.status === 'COMPLETED').length, subtitle: `${mappedTasks.filter(t => t.status === 'COMPLETED').length} tasks completed`, icon: <CheckCircle2 size={18} />, colorTheme: "success" },
+    { title: "Overdue Tasks", mainValue: mappedTasks.filter(t => t.isOverdue).length, subtitle: "Tasks past due date", icon: <AlertCircle size={18} />, colorTheme: "danger" },
+  ];
+
+  const filteredTasks = mappedTasks.filter(t => {
+    if (activeFilter === 'All' || activeFilter === 'All Tasks') return true;
+    if (activeFilter === 'In Progress') return t.status === 'IN_PROGRESS' || t.status === 'TODO';
+    if (activeFilter === 'Completed') return t.status === 'COMPLETED';
+    if (activeFilter === 'Overdue') return t.isOverdue;
+    return true;
+  });
+
   return (
     <>
       <div className="dashboard-container">
@@ -109,7 +154,7 @@ const Tasks = ({ onTabChange, onNavigateHome }) => {
         </div>
 
         <div className="row g-3 mb-4">
-          {tasksStats.map((stat, idx) => (
+          {dynamicStats.map((stat, idx) => (
             <div key={idx} className="col-12 col-md-3">
               <StatCard 
                 title={stat.title}
@@ -133,94 +178,102 @@ const Tasks = ({ onTabChange, onNavigateHome }) => {
         </div>
 
         <div className="task-list d-flex flex-column gap-3">
-          {tasks.map((task, idx) => (
-            <div key={idx} className="task-card bg-white border rounded p-4 shadow-sm">
-              <div className="row">
+          {filteredTasks.length > 0 ? (
+            filteredTasks.map((task, idx) => (
+              <div key={task.id || idx} className="task-card bg-white border rounded p-4 shadow-sm">
+                <div className="row">
 
-                <div className="col-12 col-md-3 border-end">
-                  <h6 className="fw-bold mb-1">{task.title}</h6>
-                  <span className="text-muted small fw-semibold text-uppercase tracking-wide">{task.id}</span>
+                  <div className="col-12 col-md-3 border-end">
+                    <h6 className="fw-bold mb-1">{task.title}</h6>
+                    <span className="text-muted small fw-semibold text-uppercase tracking-wide">{task.id}</span>
 
-                  <div className="mt-3 mb-2 text-muted small d-flex align-items-center">
-                    <Calendar size={14} className="me-2" /> {task.date}
-                  </div>
-                  <div className="text-muted small d-flex align-items-center mb-4">
-                    <User size={14} className="me-2" /> {task.assignee}
+                    <div className="mt-3 mb-2 text-muted small d-flex align-items-center">
+                      <Calendar size={14} className="me-2" /> {task.date}
+                    </div>
+                    <div className="text-muted small d-flex align-items-center mb-4">
+                      <User size={14} className="me-2" /> {task.assignee}
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <Button variant="secondary" className="btn btn-sm btn-light border d-flex align-items-center px-3" onClick={() => openEditModal(task)}>
+                        <Edit3 size={14} className="me-2 text-muted" /> Edit
+                      </Button>
+                      <Button variant="ghost" className="btn btn-sm btn-light border d-flex align-items-center px-3">
+                        <Trash2 size={14} className="me-2 text-muted" /> Delete
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="d-flex gap-2">
-                    <Button variant="secondary" className="btn btn-sm btn-light border d-flex align-items-center px-3" onClick={() => openEditModal(task)}>
-                      <Edit3 size={14} className="me-2 text-muted" /> Edit
-                    </Button>
-                    <Button variant="ghost" className="btn btn-sm btn-light border d-flex align-items-center px-3">
-                      <Trash2 size={14} className="me-2 text-muted" /> Delete
-                    </Button>
+                  <div className="col-12 col-md-5 border-end px-4">
+                    <div className="text-muted small fw-semibold text-uppercase tracking-wide mb-3">DEVOPS LINK</div>
+
+                    <div className="d-flex align-items-center mb-2">
+                      {task.devopsType === 'github' ? (
+                         <GitBranch size={16} className="me-2 flex-shrink-0" />
+                      ) : (
+                         <Box size={16} className="me-2 flex-shrink-0 text-dark" /> 
+                      )}
+                      <span className="fw-semibold small text-truncate">{task.repo}</span>
+                    </div>
+
+                    <div className="d-flex align-items-center mb-3">
+                      <GitPullRequest size={16} className="me-2 flex-shrink-0 text-muted" />
+                      <span className="fw-semibold small text-truncate">{task.pr}</span>
+                      {task.devopsType === 'github' && <Circle size={8} fill="#2ea043" className="text-success ms-2 border-0 flex-shrink-0" />}
+                    </div>
+
+                    <div className="text-muted small mb-1 text-start">
+                      {task.devopsType === 'github' ? 'Git Branch:' : 'Bitbucket Repository'} <span className="text-dark">{task.devopsType === 'github' ? task.branch : ''}</span>
+                    </div>
+
+                    <div className="text-muted small text-start">
+                      {task.devopsType === 'github' ? (
+                        <>
+                          Last Commit: <span className="text-dark">{task.commit}</span><br/>
+                          GitHub Actions Status: <span className="text-dark">{task.actionStatus}</span>
+                        </>
+                      ) : (
+                        <>Build (Passed) &rarr; Staging (Depl) &rarr; Production (Pend)</>
+                      )}
+                    </div>
                   </div>
+
+                  <div className="col-12 col-md-4 ps-4">
+                    <div className="d-flex justify-content-start mb-4">
+                      {getStatusBadge(task.status)}
+                      {getPriorityBadge(task.priority)}
+                    </div>
+
+                    <div className="text-muted small text-start">
+                      {task.devopsType === 'github' ? (
+                        <>
+                          Commit: {task.commit}<br/>
+                          GitHub Actions Status: {task.actionStatus}<br/>
+                          Build Pipeline (GitHub): <span className="text-success fw-semibold"><Check size={14} className="me-1"/>Passed</span>
+                        </>
+                      ) : (
+                        <>
+                          Bitbucket Repository:<br/>
+                          {task.repo}<br/>
+                          Branch: {task.branch}<br/>
+                          Commit: {task.commit}<br/>
+                          Bitbucket Pipelines Status: <span className="text-danger fw-semibold">{task.actionStatus}</span><br/>
+                          Build Pipeline (Bitbucket): <span className="text-danger fw-semibold"><X size={14} className="me-1"/>Failed</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-
-                <div className="col-12 col-md-5 border-end px-4">
-                  <div className="text-muted small fw-semibold text-uppercase tracking-wide mb-3">DEVOPS LINK</div>
-
-                  <div className="d-flex align-items-center mb-2">
-                    {task.devopsType === 'github' ? (
-                       <GitBranch size={16} className="me-2 flex-shrink-0" />
-                    ) : (
-                       <Box size={16} className="me-2 flex-shrink-0 text-dark" /> 
-                    )}
-                    <span className="fw-semibold small text-truncate">{task.repo}</span>
-                  </div>
-
-                  <div className="d-flex align-items-center mb-3">
-                    <GitPullRequest size={16} className="me-2 flex-shrink-0 text-muted" />
-                    <span className="fw-semibold small text-truncate">{task.pr}</span>
-                    {task.devopsType === 'github' && <Circle size={8} fill="#2ea043" className="text-success ms-2 border-0 flex-shrink-0" />}
-                  </div>
-
-                  <div className="text-muted small mb-1 text-start">
-                    {task.devopsType === 'github' ? 'Git Branch:' : 'Bitbucket Repository'} <span className="text-dark">{task.devopsType === 'github' ? task.branch : ''}</span>
-                  </div>
-
-                  <div className="text-muted small text-start">
-                    {task.devopsType === 'github' ? (
-                      <>
-                        Last Commit: <span className="text-dark">{task.commit}</span><br/>
-                        GitHub Actions Status: <span className="text-dark">{task.actionStatus}</span>
-                      </>
-                    ) : (
-                      <>Build (Passed) &rarr; Staging (Depl) &rarr; Production (Pend)</>
-                    )}
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-4 ps-4">
-                  <div className="d-flex justify-content-start mb-4">
-                    {getStatusBadge(task.status)}
-                    {getPriorityBadge(task.priority)}
-                  </div>
-
-                  <div className="text-muted small text-start">
-                    {task.devopsType === 'github' ? (
-                      <>
-                        Commit: {task.commit}<br/>
-                        GitHub Actions Status: {task.actionStatus}<br/>
-                        Build Pipeline (GitHub): <span className="text-success fw-semibold"><Check size={14} className="me-1"/>Passed</span>
-                      </>
-                    ) : (
-                      <>
-                        Bitbucket Repository:<br/>
-                        {task.repo}<br/>
-                        Branch: {task.branch}<br/>
-                        Commit: {task.commit}<br/>
-                        Bitbucket Pipelines Status: <span className="text-danger fw-semibold">{task.actionStatus}</span><br/>
-                        Build Pipeline (Bitbucket): <span className="text-danger fw-semibold"><X size={14} className="me-1"/>Failed</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
               </div>
+            ))
+          ) : (
+            <div className="text-center p-5 text-slate bg-white border rounded shadow-sm">
+              <CheckSquare size={40} className="mb-2 text-slate opacity-50" />
+              <h6 className="fw-semibold">No tasks found</h6>
+              <p className="small text-muted mb-0">There are no tasks matching this filter in the database.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 

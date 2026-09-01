@@ -8,10 +8,9 @@ import {
 import './AdminAttendance.css';
 
 import { 
-  todaysRecords as initialTodaysRecords, overtimeRecords, regularizationRequests, 
-  historyRecords, generateCalendarData, absentEmployees, lateArrivals
+  generateCalendarData
 } from '../../data/adminAttendanceData';
-import { attendanceService, withFallback } from '../../services';
+import { attendanceService } from '../../services';
 
 const AdminAttendance = () => {
   const [activeTab, setActiveTab] = useState('Today'); 
@@ -20,17 +19,131 @@ const AdminAttendance = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [calendarData] = useState(generateCalendarData());
   const [activeActionMenu, setActiveActionMenu] = useState(null); 
-  const [attendanceData, setAttendanceData] = useState(initialTodaysRecords);
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [regularizationData, setRegularizationData] = useState([]);
+  const [wfhData, setWfhData] = useState([]);
 
   useEffect(() => {
     const fetchAdminAttendance = async () => {
-      const records = await withFallback(attendanceService.getAttendanceRecords(), initialTodaysRecords);
-      if (Array.isArray(records) && records.length > 0) setAttendanceData(records);
+      try {
+        const records = await attendanceService.getAttendanceRecords();
+        const rawList = Array.isArray(records)
+          ? records
+          : Array.isArray(records?.data?.results)
+          ? records.data.results
+          : Array.isArray(records?.results)
+          ? records.results
+          : Array.isArray(records?.data)
+          ? records.data
+          : [];
+        setAttendanceData(rawList);
+      } catch (err) {
+        setAttendanceData([]);
+      }
+
+      try {
+        const regs = await attendanceService.getRegularizationRequests();
+        const rawRegs = Array.isArray(regs)
+          ? regs
+          : Array.isArray(regs?.data?.results)
+          ? regs.data.results
+          : Array.isArray(regs?.results)
+          ? regs.results
+          : Array.isArray(regs?.data)
+          ? regs.data
+          : [];
+        setRegularizationData(rawRegs);
+      } catch (err) {
+        setRegularizationData([]);
+      }
+
+      try {
+        const wfhs = await attendanceService.getWFHRequests();
+        const rawWfh = Array.isArray(wfhs)
+          ? wfhs
+          : Array.isArray(wfhs?.data?.results)
+          ? wfhs.data.results
+          : Array.isArray(wfhs?.results)
+          ? wfhs.results
+          : Array.isArray(wfhs?.data)
+          ? wfhs.data
+          : [];
+        setWfhData(rawWfh);
+      } catch (err) {
+        setWfhData([]);
+      }
     };
     fetchAdminAttendance();
   }, []);
 
-  const todaysRecords = attendanceData;
+  const presentCount = attendanceData.filter(a => a.status === 'PRESENT' || a.status === 'present').length;
+  const absentCount = attendanceData.filter(a => a.status === 'ABSENT' || a.status === 'absent').length;
+  const lateCount = attendanceData.filter(a => a.is_late || a.status === 'LATE' || a.status === 'late').length;
+  const wfhCount = wfhData.length || attendanceData.filter(a => a.status === 'WORK_FROM_HOME' || a.status === 'work_from_home').length;
+  const overtimeCount = attendanceData.filter(a => a.overtime_hours > 0).length;
+  const regularizationCount = regularizationData.length;
+
+  const mappedToday = attendanceData.map((rec, idx) => ({
+    id: rec.id || idx + 1,
+    name: rec.user_name || rec.user_email || `User #${rec.user || idx + 1}`,
+    dept: rec.department_name || 'Engineering',
+    initials: (rec.user_name || 'EM').substring(0, 2).toUpperCase(),
+    color: 'blue',
+    checkIn: rec.check_in_time ? new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+    checkOut: rec.check_out_time ? new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+    location: rec.status === 'work_from_home' ? 'WFH' : 'Office',
+    workingHrs: rec.work_hours ? `${rec.work_hours}h` : '8h 00m',
+    status: rec.status === 'present' || rec.status === 'PRESENT' ? 'Present' : (rec.status === 'absent' || rec.status === 'ABSENT' ? 'Absent' : (rec.status === 'work_from_home' || rec.status === 'WORK_FROM_HOME' ? 'Work From Home' : 'Present')),
+  }));
+
+  const mappedOvertime = attendanceData.filter(a => (a.overtime_hours && a.overtime_hours > 0)).map((rec, idx) => ({
+    id: rec.id || idx + 1,
+    name: rec.user_name || rec.user_email || `User #${rec.user || idx + 1}`,
+    dept: rec.department_name || 'Engineering',
+    initials: (rec.user_name || 'EM').substring(0, 2).toUpperCase(),
+    color: 'blue',
+    date: rec.date || '2026-04-22',
+    regularHrs: '8.0h',
+    overtimeHrs: `${rec.overtime_hours}h`,
+    totalHrs: `${(parseFloat(rec.overtime_hours) + 8.0).toFixed(1)}h`,
+    reason: rec.notes || 'Project delivery',
+  }));
+
+  const mappedRegularization = regularizationData.map((rec, idx) => ({
+    id: rec.id || idx + 1,
+    name: rec.requested_by_name || `User #${rec.requested_by || idx + 1}`,
+    dept: 'Engineering',
+    initials: (rec.requested_by_name || 'EM').substring(0, 2).toUpperCase(),
+    color: 'blue',
+    date: rec.requested_check_in ? rec.requested_check_in.split('T')[0] : '2026-04-22',
+    missed: rec.reason || 'Check-in missed',
+    reason: rec.reason || 'Forgot badge',
+    requestedOn: rec.created_at ? new Date(rec.created_at).toLocaleDateString() : 'Today',
+    status: rec.status === 'approved' ? 'Approved' : (rec.status === 'rejected' ? 'Rejected' : 'Pending'),
+  }));
+
+  const absentEmployees = attendanceData
+    .filter(a => a.status === 'absent' || a.status === 'ABSENT')
+    .map((a, idx) => ({
+      id: a.id || idx + 1,
+      name: a.user_name || a.user_email || `User #${a.user}`,
+      dept: a.department_name || 'Engineering',
+      initials: (a.user_name || 'EM').substring(0, 2).toUpperCase(),
+      color: 'danger',
+    }));
+
+  const lateArrivals = attendanceData
+    .filter(a => a.is_late || a.status === 'late' || a.status === 'LATE')
+    .map((a, idx) => ({
+      id: a.id || idx + 1,
+      name: a.user_name || a.user_email || `User #${a.user}`,
+      dept: a.department_name || 'Engineering',
+      initials: (a.user_name || 'EM').substring(0, 2).toUpperCase(),
+      color: 'warning',
+      time: a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:30 AM'
+    }));
+
+  const todaysRecords = mappedToday;
   const openDrawer = (employee) => {
     setSelectedEmployee(employee);
     setIsDrawerOpen(true);
@@ -59,34 +172,34 @@ const AdminAttendance = () => {
           <div className="summary-card">
             <div>
               <div className="summary-card-title">PRESENT TODAY</div>
-              <div className="summary-card-value present">18</div>
+              <div className="summary-card-value present">{presentCount}</div>
             </div>
-            <div className="summary-card-subtext">of 24 employees</div>
+            <div className="summary-card-subtext">of {attendanceData.length} records</div>
           </div>
         </div>
         <div className="col-12 col-md-3">
           <div className="summary-card">
             <div>
               <div className="summary-card-title">ABSENT TODAY</div>
-              <div className="summary-card-value absent">3</div>
+              <div className="summary-card-value absent">{absentCount}</div>
             </div>
-            <div className="summary-card-subtext">2 on approved leave</div>
+            <div className="summary-card-subtext">absent records</div>
           </div>
         </div>
         <div className="col-12 col-md-2">
           <div className="summary-card">
             <div>
               <div className="summary-card-title">LATE ARRIVALS</div>
-              <div className="summary-card-value late">2</div>
+              <div className="summary-card-value late">{lateCount}</div>
             </div>
-            <div className="summary-card-subtext">after 9:30 AM</div>
+            <div className="summary-card-subtext">late check-ins</div>
           </div>
         </div>
         <div className="col-12 col-md-2">
           <div className="summary-card">
             <div>
               <div className="summary-card-title">WORK FROM HOME</div>
-              <div className="summary-card-value wfh">5</div>
+              <div className="summary-card-value wfh">{wfhCount}</div>
             </div>
             <div className="summary-card-subtext">remote today</div>
           </div>
@@ -95,7 +208,7 @@ const AdminAttendance = () => {
           <div className="summary-card">
             <div>
               <div className="summary-card-title">OVERTIME (HRS)</div>
-              <div className="summary-card-value overtime">14</div>
+              <div className="summary-card-value overtime">{overtimeCount}</div>
             </div>
             <div className="summary-card-subtext">this week</div>
           </div>
@@ -104,13 +217,13 @@ const AdminAttendance = () => {
 
       <div className="admin-attendance-tabs mt-2">
         <div className={`admin-attendance-tab ${activeTab === 'Today' ? 'active' : ''}`} onClick={() => setActiveTab('Today')}>
-          <CalendarIcon size={16} /> Today's Records {renderTabBadge(18)}
+          <CalendarIcon size={16} /> Today's Records {renderTabBadge(attendanceData.length)}
         </div>
         <div className={`admin-attendance-tab ${activeTab === 'Overtime' ? 'active' : ''}`} onClick={() => setActiveTab('Overtime')}>
-          <Clock size={16} /> Overtime {renderTabBadge(8)}
+          <Clock size={16} /> Overtime {renderTabBadge(overtimeCount)}
         </div>
         <div className={`admin-attendance-tab ${activeTab === 'Regularization' ? 'active' : ''}`} onClick={() => setActiveTab('Regularization')}>
-          <Edit3 size={16} /> Regularization {renderTabBadge(5)}
+          <Edit3 size={16} /> Regularization {renderTabBadge(regularizationCount)}
         </div>
         <div className={`admin-attendance-tab ${activeTab === 'History' ? 'active' : ''}`} onClick={() => setActiveTab('History')}>
           <History size={16} /> History
@@ -166,65 +279,70 @@ const AdminAttendance = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {todaysRecords.map(rec => (
-                    <tr key={rec.id}>
-                      <td className="py-3 cursor-pointer" onClick={() => openDrawer(rec)}>
-                        <div className="d-flex align-items-center gap-3">
-                          <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
-                          <div>
-                            <div className="fw-semibold text-dark">{rec.name}</div>
-                            <div className="small text-muted">{rec.dept}</div>
+                  {mappedToday.length > 0 ? (
+                    mappedToday.map(rec => (
+                      <tr key={rec.id}>
+                        <td className="py-3 cursor-pointer" onClick={() => openDrawer(rec)}>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
+                            <div>
+                              <div className="fw-semibold text-dark">{rec.name}</div>
+                              <div className="small text-muted">{rec.dept}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className={`py-3 fw-medium ${rec.status === 'Late' ? 'text-warning-dark' : rec.status === 'Absent' ? 'text-muted' : 'text-success'}`}>{rec.checkIn}</td>
-                      <td className="py-3 fw-medium text-dark">{rec.checkOut}</td>
-                      <td className="py-3">
-                        {rec.location === 'Office' ? (
-                          <div className="location-text"><MapPin size={14} /> Office</div>
-                        ) : rec.location === 'WFH' ? (
-                          <div className="location-text wfh"><Home size={14} /> WFH</div>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 fw-bold text-dark">{rec.status === 'Absent' ? '—' : '9h 10m'}</td>
-                      <td className="py-3">
-                        <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
-                      </td>
-                      <td className="py-3 position-relative">
-                        <Button 
-                          variant="icon" 
-                          className="btn btn-sm btn-light border-0 rounded-circle text-muted p-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveActionMenu(activeActionMenu === rec.id ? null : rec.id);
-                          }}
-                        >
-                          <MoreHorizontal size={16} />
-                        </Button>
-                        {activeActionMenu === rec.id && (
-                          <div className="dropdown-menu show position-absolute" style={{right: '30px', top: '40px', zIndex: 1000, minWidth: '150px'}} onClick={e => e.stopPropagation()}>
-                            <button className="dropdown-item d-flex align-items-center gap-2 small py-2" onClick={() => { openDrawer(rec); setActiveActionMenu(null); }}>
-                              <Eye size={14} className="text-muted" /> View detail
-                            </button>
-                            <button className="dropdown-item d-flex align-items-center gap-2 small py-2 text-danger">
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                        </td>
+                        <td className={`py-3 fw-medium ${rec.status === 'Late' ? 'text-warning-dark' : rec.status === 'Absent' ? 'text-muted' : 'text-success'}`}>{rec.checkIn}</td>
+                        <td className="py-3 fw-medium text-dark">{rec.checkOut}</td>
+                        <td className="py-3">
+                          {rec.location === 'Office' ? (
+                            <div className="location-text"><MapPin size={14} /> Office</div>
+                          ) : rec.location === 'WFH' ? (
+                            <div className="location-text wfh"><Home size={14} /> WFH</div>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 fw-bold text-dark">{rec.status === 'Absent' ? '—' : rec.workingHrs}</td>
+                        <td className="py-3">
+                          <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
+                        </td>
+                        <td className="py-3 position-relative">
+                          <Button 
+                            variant="icon" 
+                            className="btn btn-sm btn-light border-0 rounded-circle text-muted p-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveActionMenu(activeActionMenu === rec.id ? null : rec.id);
+                            }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </Button>
+                          {activeActionMenu === rec.id && (
+                            <div className="dropdown-menu show position-absolute" style={{right: '30px', top: '40px', zIndex: 1000, minWidth: '150px'}} onClick={e => e.stopPropagation()}>
+                              <button className="dropdown-item d-flex align-items-center gap-2 small py-2" onClick={() => { openDrawer(rec); setActiveActionMenu(null); }}>
+                                <Eye size={14} className="text-muted" /> View detail
+                              </button>
+                              <button className="dropdown-item d-flex align-items-center gap-2 small py-2 text-danger">
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4 text-muted">No attendance records found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-              <span className="small text-muted">Showing 1-8 of 48</span>
+              <span className="small text-muted">Showing {mappedToday.length} records</span>
               <div className="d-flex gap-1">
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronLeft size={14}/></Button>
                 <Button className="btn btn-sm btn-primary px-3">1</Button>
-                <Button variant="ghost" className="btn btn-sm btn-light border px-3">2</Button>
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronRight size={14}/></Button>
               </div>
             </div>
@@ -235,7 +353,7 @@ const AdminAttendance = () => {
           <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="m-0 fw-bold">Overtime records</h5>
-              <span className="badge bg-light text-dark border px-3 py-2">8 employees</span>
+              <span className="badge bg-light text-dark border px-3 py-2">{mappedOvertime.length} employees</span>
             </div>
             <div className="table-responsive">
               <table className="table table-hover mb-0 align-middle">
@@ -251,36 +369,41 @@ const AdminAttendance = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {overtimeRecords.map(rec => (
-                    <tr key={rec.id}>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
-                          <div>
-                            <div className="fw-semibold text-dark">{rec.name}</div>
-                            <div className="small text-muted">{rec.dept}</div>
+                  {mappedOvertime.length > 0 ? (
+                    mappedOvertime.map(rec => (
+                      <tr key={rec.id}>
+                        <td className="py-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
+                            <div>
+                              <div className="fw-semibold text-dark">{rec.name}</div>
+                              <div className="small text-muted">{rec.dept}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 fw-medium text-dark">{rec.date}</td>
-                      <td className="py-3 fw-medium text-dark">{rec.regularHrs}</td>
-                      <td className="py-3 fw-semibold overtime-text">{rec.overtimeHrs}</td>
-                      <td className="py-3 fw-bold text-dark">{rec.totalHrs}</td>
-                      <td className="py-3 text-muted small">{rec.reason}</td>
-                      <td className="py-3">
-                        <Button variant="secondary" className="btn btn-sm btn-light border text-blue fw-semibold">View</Button>
-                      </td>
+                        </td>
+                        <td className="py-3 fw-medium text-dark">{rec.date}</td>
+                        <td className="py-3 fw-medium text-dark">{rec.regularHrs}</td>
+                        <td className="py-3 fw-semibold overtime-text">{rec.overtimeHrs}</td>
+                        <td className="py-3 fw-bold text-dark">{rec.totalHrs}</td>
+                        <td className="py-3 text-muted small">{rec.reason}</td>
+                        <td className="py-3">
+                          <Button variant="secondary" className="btn btn-sm btn-light border text-blue fw-semibold">View</Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4 text-muted">No overtime records found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-              <span className="small text-muted">Showing 1-8 of 48</span>
+              <span className="small text-muted">Showing {mappedOvertime.length} records</span>
               <div className="d-flex gap-1">
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronLeft size={14}/></Button>
                 <Button className="btn btn-sm btn-primary px-3">1</Button>
-                <Button variant="ghost" className="btn btn-sm btn-light border px-3">2</Button>
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronRight size={14}/></Button>
               </div>
             </div>
@@ -291,7 +414,7 @@ const AdminAttendance = () => {
           <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h5 className="m-0 fw-bold">Regularization requests</h5>
-              <span className="badge bg-light text-dark border px-3 py-2">5 pending</span>
+              <span className="badge bg-light text-dark border px-3 py-2">{mappedRegularization.length} pending</span>
             </div>
             <div className="table-responsive">
               <table className="table table-hover mb-0 align-middle">
@@ -307,45 +430,50 @@ const AdminAttendance = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {regularizationRequests.map(rec => (
-                    <tr key={rec.id}>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
-                          <div>
-                            <div className="fw-semibold text-dark">{rec.name}</div>
-                            <div className="small text-muted">{rec.dept}</div>
+                  {mappedRegularization.length > 0 ? (
+                    mappedRegularization.map(rec => (
+                      <tr key={rec.id}>
+                        <td className="py-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
+                            <div>
+                              <div className="fw-semibold text-dark">{rec.name}</div>
+                              <div className="small text-muted">{rec.dept}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-muted">{rec.date}</td>
-                      <td className="py-3"><span className="missed-text">{rec.missed}</span></td>
-                      <td className="py-3 text-dark">{rec.reason}</td>
-                      <td className="py-3 text-muted">{rec.requestedOn}</td>
-                      <td className="py-3">
-                        <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
-                      </td>
-                      <td className="py-3">
-                        {rec.status === 'Pending' ? (
-                          <div className="d-flex gap-2">
-                            <Button variant="secondary" className="btn btn-sm btn-light border text-success fw-semibold bg-success-light">Approve</Button>
-                            <Button variant="secondary" className="btn btn-sm btn-light border text-danger fw-semibold bg-danger-light">Reject</Button>
-                          </div>
-                        ) : (
-                          <Button variant="secondary" className="btn btn-sm btn-light border text-blue fw-semibold">View</Button>
-                        )}
-                      </td>
+                        </td>
+                        <td className="py-3 text-muted">{rec.date}</td>
+                        <td className="py-3"><span className="missed-text">{rec.missed}</span></td>
+                        <td className="py-3 text-dark">{rec.reason}</td>
+                        <td className="py-3 text-muted">{rec.requestedOn}</td>
+                        <td className="py-3">
+                          <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
+                        </td>
+                        <td className="py-3">
+                          {rec.status === 'Pending' ? (
+                            <div className="d-flex gap-2">
+                              <Button variant="secondary" className="btn btn-sm btn-light border text-success fw-semibold bg-success-light">Approve</Button>
+                              <Button variant="secondary" className="btn btn-sm btn-light border text-danger fw-semibold bg-danger-light">Reject</Button>
+                            </div>
+                          ) : (
+                            <Button variant="secondary" className="btn btn-sm btn-light border text-blue fw-semibold">View</Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4 text-muted">No regularization requests found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-              <span className="small text-muted">Showing 1-8 of 48</span>
+              <span className="small text-muted">Showing {mappedRegularization.length} records</span>
               <div className="d-flex gap-1">
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronLeft size={14}/></Button>
                 <Button className="btn btn-sm btn-primary px-3">1</Button>
-                <Button variant="ghost" className="btn btn-sm btn-light border px-3">2</Button>
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronRight size={14}/></Button>
               </div>
             </div>
@@ -380,48 +508,53 @@ const AdminAttendance = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {historyRecords.map(rec => (
-                    <tr key={rec.id}>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
-                          <div>
-                            <div className="fw-semibold text-dark">{rec.name}</div>
-                            <div className="small text-muted">{rec.dept}</div>
+                  {mappedToday.length > 0 ? (
+                    mappedToday.map(rec => (
+                      <tr key={rec.id}>
+                        <td className="py-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`avatar-circle avatar-bg-${rec.color}`}>{rec.initials}</div>
+                            <div>
+                              <div className="fw-semibold text-dark">{rec.name}</div>
+                              <div className="small text-muted">{rec.dept}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className={`py-3 fw-medium ${rec.status === 'Late' ? 'text-warning-dark' : rec.status === 'Absent' ? 'text-muted' : 'text-success'}`}>{rec.checkIn}</td>
-                      <td className="py-3 fw-medium text-dark">{rec.checkOut}</td>
-                      <td className="py-3">
-                        {rec.location === 'Office' ? (
-                          <div className="location-text"><MapPin size={14} /> Office</div>
-                        ) : rec.location === 'WFH' ? (
-                          <div className="location-text wfh"><Home size={14} /> WFH</div>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
-                      <td className="py-3 fw-bold text-dark">{rec.workingHrs}</td>
-                      <td className="py-3">
-                        <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
-                      </td>
-                      <td className="py-3">
-                        <Button variant="icon" className="btn btn-sm btn-light border-0 rounded-circle text-muted p-1">
-                          <MoreHorizontal size={16} />
-                        </Button>
-                      </td>
+                        </td>
+                        <td className={`py-3 fw-medium ${rec.status === 'Late' ? 'text-warning-dark' : rec.status === 'Absent' ? 'text-muted' : 'text-success'}`}>{rec.checkIn}</td>
+                        <td className="py-3 fw-medium text-dark">{rec.checkOut}</td>
+                        <td className="py-3">
+                          {rec.location === 'Office' ? (
+                            <div className="location-text"><MapPin size={14} /> Office</div>
+                          ) : rec.location === 'WFH' ? (
+                            <div className="location-text wfh"><Home size={14} /> WFH</div>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 fw-bold text-dark">{rec.workingHrs}</td>
+                        <td className="py-3">
+                          <span className={`status-badge ${rec.status.toLowerCase()}`}>{rec.status}</span>
+                        </td>
+                        <td className="py-3">
+                          <Button variant="icon" className="btn btn-sm btn-light border-0 rounded-circle text-muted p-1">
+                            <MoreHorizontal size={16} />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4 text-muted">No attendance history found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-              <span className="small text-muted">Showing 1-8 of 48</span>
+              <span className="small text-muted">Showing {mappedToday.length} records</span>
               <div className="d-flex gap-1">
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronLeft size={14}/></Button>
                 <Button className="btn btn-sm btn-primary px-3">1</Button>
-                <Button variant="ghost" className="btn btn-sm btn-light border px-3">2</Button>
                 <Button variant="ghost" className="btn btn-sm btn-light border px-2"><ChevronRight size={14}/></Button>
               </div>
             </div>
@@ -494,15 +627,15 @@ const AdminAttendance = () => {
                   <h5 className="fw-bold mb-4">April 30, 2026</h5>
                   <div className="d-flex gap-2 mb-4">
                     <div className="bg-success-light text-success text-center rounded p-2 flex-grow-1">
-                      <div className="fs-3 fw-bold lh-1">130</div>
+                      <div className="fs-3 fw-bold lh-1">{presentCount}</div>
                       <div className="small">Present</div>
                     </div>
                     <div className="bg-danger-light text-danger text-center rounded p-2 flex-grow-1">
-                      <div className="fs-3 fw-bold lh-1">7</div>
+                      <div className="fs-3 fw-bold lh-1">{absentCount}</div>
                       <div className="small">Absent</div>
                     </div>
                     <div className="bg-warning-light text-warning-dark text-center rounded p-2 flex-grow-1">
-                      <div className="fs-3 fw-bold lh-1">5</div>
+                      <div className="fs-3 fw-bold lh-1">{lateCount}</div>
                       <div className="small">Late</div>
                     </div>
                   </div>
@@ -510,35 +643,43 @@ const AdminAttendance = () => {
                   <div className="mb-4">
                     <div className="small fw-bold text-muted text-uppercase tracking-wide mb-3">ABSENT EMPLOYEES</div>
                     <div className="d-flex flex-column gap-3">
-                      {absentEmployees.map(emp => (
-                        <div key={emp.id} className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex align-items-center gap-2">
-                            <div className={`avatar-circle avatar-bg-${emp.color}`} style={{width:24, height:24, fontSize:'0.65rem'}}>{emp.initials}</div>
-                            <div className="lh-1">
-                              <div className="fw-semibold text-dark text-sm">{emp.name}</div>
-                              <div className="text-muted" style={{fontSize: '0.75rem'}}>{emp.dept}</div>
+                      {absentEmployees.length > 0 ? (
+                        absentEmployees.map(emp => (
+                          <div key={emp.id} className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center gap-2">
+                              <div className={`avatar-circle avatar-bg-${emp.color}`} style={{width:24, height:24, fontSize:'0.65rem'}}>{emp.initials}</div>
+                              <div className="lh-1">
+                                <div className="fw-semibold text-dark text-sm">{emp.name}</div>
+                                <div className="text-muted" style={{fontSize: '0.75rem'}}>{emp.dept}</div>
+                              </div>
                             </div>
+                            <span className="badge bg-danger-light text-danger border-0">Absent</span>
                           </div>
-                          <span className="badge bg-danger-light text-danger border-0">Absent</span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <div className="small text-muted">No absent employees in database today.</div>
+                      )}
                     </div>
                   </div>
 
                   <div>
                     <div className="small fw-bold text-muted text-uppercase tracking-wide mb-3">LATE ARRIVALS</div>
                     <div className="d-flex flex-column gap-3">
-                      {lateArrivals.map(emp => (
-                        <div key={emp.id} className="d-flex justify-content-between align-items-center">
-                          <div className="d-flex align-items-center gap-2">
-                            <div className={`avatar-circle avatar-bg-${emp.color}`} style={{width:24, height:24, fontSize:'0.65rem'}}>{emp.initials}</div>
-                            <div className="lh-1">
-                              <div className="fw-semibold text-dark text-sm">{emp.name}</div>
+                      {lateArrivals.length > 0 ? (
+                        lateArrivals.map(emp => (
+                          <div key={emp.id} className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center gap-2">
+                              <div className={`avatar-circle avatar-bg-${emp.color}`} style={{width:24, height:24, fontSize:'0.65rem'}}>{emp.initials}</div>
+                              <div className="lh-1">
+                                <div className="fw-semibold text-dark text-sm">{emp.name}</div>
+                              </div>
                             </div>
+                            <span className="badge bg-warning-light text-warning-dark border-0">{emp.time}</span>
                           </div>
-                          <span className="badge bg-warning-light text-warning-dark border-0">{emp.time}</span>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <div className="small text-muted">No late arrivals in database today.</div>
+                      )}
                     </div>
                   </div>
 
