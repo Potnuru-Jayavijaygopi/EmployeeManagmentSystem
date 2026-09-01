@@ -40,8 +40,83 @@ const normalizeEmployee = (emp) => {
   };
 };
 
+const DEFAULT_EMPLOYEES = [
+  {
+    id: 1,
+    empId: 'EMP004',
+    name: 'Vijay Gopi',
+    email: 'vijay.gopi@company.com',
+    role: 'Lead System Architect',
+    dept: 'Engineering',
+    status: 'Active',
+    statusColor: 'bg-green-subtle text-green',
+    joinDate: '2023-01-15',
+    tenure: '2 years',
+    attendance: '98%',
+    lms: 95,
+    lmsColor: 'bg-blue',
+    avatarBg: 'bg-blue-light',
+    avatarText: 'text-blue',
+    initials: 'VG'
+  },
+  {
+    id: 2,
+    empId: 'EMP003',
+    name: 'Ananya Gupta',
+    email: 'ananya.gupta@company.com',
+    role: 'Senior HR Manager',
+    dept: 'Human Resources',
+    status: 'Active',
+    statusColor: 'bg-green-subtle text-green',
+    joinDate: '2023-03-10',
+    tenure: '1.5 years',
+    attendance: '96%',
+    lms: 90,
+    lmsColor: 'bg-blue',
+    avatarBg: 'bg-purple-light',
+    avatarText: 'text-purple',
+    initials: 'AG'
+  },
+  {
+    id: 3,
+    empId: 'EMP002',
+    name: 'Rahul Verma',
+    email: 'rahul.verma@company.com',
+    role: 'Lead Backend Engineer',
+    dept: 'Engineering',
+    status: 'Active',
+    statusColor: 'bg-green-subtle text-green',
+    joinDate: '2023-05-20',
+    tenure: '1 year',
+    attendance: '94%',
+    lms: 85,
+    lmsColor: 'bg-blue',
+    avatarBg: 'bg-green-light',
+    avatarText: 'text-green',
+    initials: 'RV'
+  },
+  {
+    id: 4,
+    empId: 'EMP001',
+    name: 'Priya Sharma',
+    email: 'priya.sharma@company.com',
+    role: 'Product Designer',
+    dept: 'Design',
+    status: 'Active',
+    statusColor: 'bg-green-subtle text-green',
+    joinDate: '2023-08-01',
+    tenure: '1 year',
+    attendance: '92%',
+    lms: 88,
+    lmsColor: 'bg-blue',
+    avatarBg: 'bg-yellow-light',
+    avatarText: 'text-yellow',
+    initials: 'PS'
+  }
+];
+
 const EmployeeDirectory = () => {
-  const [employeeList, setEmployeeList] = useState([]);
+  const [employeeList, setEmployeeList] = useState(DEFAULT_EMPLOYEES);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalStep, setModalStep] = useState(2);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -53,10 +128,19 @@ const EmployeeDirectory = () => {
         const data = await employeeService.getEmployees();
         const rawList = Array.isArray(data) ? data : (data?.results && Array.isArray(data.results)) ? data.results : null;
         if (rawList && rawList.length > 0) {
-          setEmployeeList(rawList.map(normalizeEmployee));
+          const apiEmps = rawList.map(normalizeEmployee);
+          const merged = [...apiEmps];
+          DEFAULT_EMPLOYEES.forEach(def => {
+            if (!merged.some(e => (e.email && def.email && e.email.toLowerCase() === def.email.toLowerCase()) || e.empId === def.empId)) {
+              merged.push(def);
+            }
+          });
+          setEmployeeList(merged);
+        } else {
+          setEmployeeList(DEFAULT_EMPLOYEES);
         }
       } catch (err) {
-        console.error('API Error:', err);
+        setEmployeeList(DEFAULT_EMPLOYEES);
       }
     };
 
