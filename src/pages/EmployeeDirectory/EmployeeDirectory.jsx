@@ -6,31 +6,42 @@ import {
 } from 'lucide-react';
 import EmployeeDetails from '../../components/employees/EmployeeDetails';
 import './EmployeeDirectory.css';
-import { employees as initialEmployees } from '../../data/employeesConstants';
 import Button from '../../components/common/Button';
-import { employeeService, withFallback } from '../../services';
+import { employeeService } from '../../services';
 
-const normalizeEmployee = (emp) => ({
-  id: emp.id || emp.employee_id || emp.empId,
-  empId: emp.employee_id || emp.empId || `EMP${String(emp.id || '001').padStart(3, '0')}`,
-  name: emp.name || (emp.first_name ? `${emp.first_name} ${emp.last_name || ''}`.trim() : 'Employee'),
-  email: emp.email || '',
-  role: emp.designation_name || emp.designation || emp.role || 'Staff',
-  dept: emp.department_name || emp.department || emp.dept || 'General',
-  status: emp.status || 'Active',
-  statusColor: emp.status === 'Active' ? 'bg-green-subtle text-green' : 'bg-yellow-subtle text-yellow',
-  joinDate: emp.date_of_joining || emp.joinDate || '2024-01-15',
-  tenure: emp.tenure || '1 year',
-  attendance: emp.attendance || '95%',
-  lms: emp.lms_progress || emp.lms || 80,
-  lmsColor: 'bg-blue',
-  avatarBg: emp.avatarBg || 'bg-blue-light',
-  avatarText: emp.avatarText || 'text-blue',
-  initials: emp.initials || (emp.first_name ? `${emp.first_name[0]}${emp.last_name ? emp.last_name[0] : ''}` : 'EM')
-});
+const normalizeEmployee = (emp) => {
+  const user = emp.user || {};
+  const firstName = user.first_name || emp.first_name || '';
+  const lastName = user.last_name || emp.last_name || '';
+  const fullName = emp.name || `${firstName} ${lastName}`.trim() || 'Employee';
+  const email = user.email || emp.email || emp.email_personal || '';
+  const empId = emp.employee_id || emp.empId || `EMP${String(emp.id || '001').padStart(3, '0')}`;
+  const role = emp.designation || user.role || emp.role || 'Staff';
+  const dept = emp.department_name || emp.department || 'Engineering';
+  const initials = (firstName ? `${firstName[0]}${lastName ? lastName[0] : ''}` : 'EM').toUpperCase();
+
+  return {
+    id: emp.id,
+    empId,
+    name: fullName,
+    email,
+    role,
+    dept,
+    status: emp.status || 'Active',
+    statusColor: 'bg-green-subtle text-green',
+    joinDate: emp.joining_date || emp.joinDate || '2023-01-15',
+    tenure: emp.tenure || '1 year',
+    attendance: emp.attendance || '95%',
+    lms: emp.lms_progress || 85,
+    lmsColor: 'bg-blue',
+    avatarBg: 'bg-blue-light',
+    avatarText: 'text-blue',
+    initials
+  };
+};
 
 const EmployeeDirectory = () => {
-  const [employeeList, setEmployeeList] = useState(initialEmployees);
+  const [employeeList, setEmployeeList] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalStep, setModalStep] = useState(2);
   const [activeMenu, setActiveMenu] = useState(null);
@@ -38,10 +49,14 @@ const EmployeeDirectory = () => {
 
   useEffect(() => {
     const fetchEmployees = async () => {
-      const data = await withFallback(employeeService.getEmployees(), initialEmployees);
-      const rawList = Array.isArray(data) ? data : (data?.results && Array.isArray(data.results)) ? data.results : null;
-      if (rawList && rawList.length > 0) {
-        setEmployeeList(rawList.map(normalizeEmployee));
+      try {
+        const data = await employeeService.getEmployees();
+        const rawList = Array.isArray(data) ? data : (data?.results && Array.isArray(data.results)) ? data.results : null;
+        if (rawList && rawList.length > 0) {
+          setEmployeeList(rawList.map(normalizeEmployee));
+        }
+      } catch (err) {
+        console.error('API Error:', err);
       }
     };
 
@@ -67,7 +82,7 @@ const EmployeeDirectory = () => {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h1 className="page-title m-0">Employee List</h1>
-            <p className="page-subtitle mt-1 mb-0 text-slate">{employees.length} employees across 8 departments</p>
+            <p className="page-subtitle mt-1 mb-0 text-slate">{employees.length} employees across departments</p>
           </div>
           <div className="d-flex gap-2">
             <Button variant="secondary" className="btn btn-light bg-white border d-flex align-items-center fw-semibold text-dark shadow-sm">
@@ -137,7 +152,7 @@ const EmployeeDirectory = () => {
                 <option>All Departments</option>
                 <option>Engineering</option>
                 <option>HR</option>
-                <option>Sales</option>
+                <option>Product</option>
               </select>
               <select className="emp-filter-select">
                 <option>All Status</option>
