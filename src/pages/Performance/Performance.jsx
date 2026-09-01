@@ -36,16 +36,79 @@ const Performance = () => {
   const [isCreateCategoryModalOpen, setIsCreateCategoryModalOpen] = useState(false);
   const [goals, setGoals] = useState([]);
   const [kpis, setKpis] = useState([]);
+  const [reviewCycles, setReviewCycles] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   useEffect(() => {
     const fetchPerformance = async () => {
-      const goalsData = await withFallback(performanceService.getGoals(), []);
-      const kpisData = await withFallback(performanceService.getKPIs(), []);
-      setGoals(goalsData);
-      setKpis(kpisData);
+      const [goalsRes, kpisRes, cyclesRes, reviewsRes] = await Promise.allSettled([
+        performanceService.getGoals(),
+        performanceService.getKPIs(),
+        performanceService.getReviewCycles(),
+        performanceService.getReviews(),
+      ]);
+
+      if (goalsRes.status === 'fulfilled') {
+        const goalsData = goalsRes.value;
+        setGoals(Array.isArray(goalsData) ? goalsData : (goalsData?.results || []));
+      } else { setGoals([]); }
+
+      if (kpisRes.status === 'fulfilled') {
+        const kpisData = kpisRes.value;
+        setKpis(Array.isArray(kpisData) ? kpisData : (kpisData?.results || []));
+      } else { setKpis([]); }
+
+      if (cyclesRes.status === 'fulfilled') {
+        const cyclesData = cyclesRes.value;
+        setReviewCycles(Array.isArray(cyclesData) ? cyclesData : (cyclesData?.results || []));
+      } else { setReviewCycles([]); }
+
+      if (reviewsRes.status === 'fulfilled') {
+        const reviewsData = reviewsRes.value;
+        setReviews(Array.isArray(reviewsData) ? reviewsData : (reviewsData?.results || []));
+      } else { setReviews([]); }
     };
     fetchPerformance();
   }, []);
+
+  const activeCyclesCount = reviewCycles.filter(c => String(c.status).toLowerCase() === 'active').length || reviewCycles.length;
+  const pendingReviewsCount = reviews.filter(r => ['pending', 'in_progress', 'draft'].includes(String(r.status).toLowerCase())).length;
+  const completedReviewsCount = reviews.filter(r => String(r.status).toLowerCase() === 'completed').length;
+  const ratingsList = reviews.map(r => Number(r.overall_rating || 0)).filter(r => r > 0);
+  const avgScore = ratingsList.length > 0 ? (ratingsList.reduce((a, b) => a + b, 0) / ratingsList.length).toFixed(1) : "0.0";
+  const promotionsCount = reviews.filter(r => r.promotion_recommended || String(r.promotion).toLowerCase() === 'recommended').length;
+
+  const dynamicMainTabs = [
+    {
+      id: "review_cycles",
+      label: "Review Cycles",
+      badge: String(reviewCycles.length),
+      icon: <Calendar size={16} />,
+    },
+    {
+      id: "all_reviews",
+      label: "All Reviews",
+      badge: String(reviews.length),
+      icon: <Calendar size={16} />,
+    },
+    {
+      id: "managers_assessments",
+      label: "Manager's Assessments",
+      badge: String(reviews.length),
+      icon: <Users size={16} />,
+    },
+    {
+      id: "manager_reviews",
+      label: "Manager Reviews",
+      badge: String(reviews.length),
+      icon: <Users size={16} />,
+    },
+    {
+      id: "summary_scores",
+      label: "Summary & Scores",
+      icon: <BarChart2 size={16} />,
+    },
+  ];
 
   return (
     <div
@@ -133,31 +196,31 @@ const Performance = () => {
             <div className="col-12 col-sm-6 col-lg">
               <StatCard
                 title="Active Cycles"
-                mainValue="3"
+                mainValue={String(activeCyclesCount)}
                 mainValueColorClass="text-primary-blue"
-                footer="2 quarterly · 1 annual"
+                footer="Live cycles"
               />
             </div>
             <div className="col-12 col-sm-6 col-lg">
               <StatCard
                 title="Pending Reviews"
-                mainValue="8"
+                mainValue={String(pendingReviewsCount)}
                 mainValueColorClass="text-warning"
-                footer="due this week"
+                footer="action required"
               />
             </div>
             <div className="col-12 col-sm-6 col-lg">
               <StatCard
                 title="Completed"
-                mainValue="24"
+                mainValue={String(completedReviewsCount)}
                 mainValueColorClass="text-success"
-                footer="this quarter"
+                footer="from API"
               />
             </div>
             <div className="col-12 col-sm-6 col-lg">
               <StatCard
                 title="Avg Score"
-                mainValue="4.2"
+                mainValue={String(avgScore)}
                 mainValueColorClass="text-purple"
                 footer="out of 5.0"
               />
@@ -165,7 +228,7 @@ const Performance = () => {
             <div className="col-12 col-sm-6 col-lg">
               <StatCard
                 title="Promotions"
-                mainValue="2"
+                mainValue={String(promotionsCount)}
                 mainValueColorClass="text-info"
                 footer="recommended"
               />
@@ -174,7 +237,7 @@ const Performance = () => {
 
           <div className="mb-3">
             <Tabs
-              tabs={mainTabs}
+              tabs={dynamicMainTabs}
               activeTab={activeMainTab}
               onTabChange={setActiveMainTab}
             />

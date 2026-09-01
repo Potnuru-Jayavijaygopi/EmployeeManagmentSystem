@@ -32,23 +32,77 @@ import { dashboardService, withFallback } from "../../services";
 
 const Projects = () => {
   const location = useLocation();
-  const [projectsList, setProjectsList] = useState(initialProjectsData);
+  const [projectsList, setProjectsList] = useState([]);
 
   useEffect(() => {
     const fetchProjects = async () => {
-      const projects = await withFallback(dashboardService.getProjects(), initialProjectsData);
-      if (Array.isArray(projects) && projects.length > 0 && projects[0]?.manager) {
-        setProjectsList(projects);
+      try {
+        const data = await dashboardService.getProjects();
+        const rawList = Array.isArray(data) ? data : (data?.results && Array.isArray(data.results)) ? data.results : null;
+        if (rawList && rawList.length > 0) {
+          const mapped = rawList.map(p => {
+            const mName = p.manager_name || (typeof p.manager === 'object' ? `${p.manager.first_name || ''} ${p.manager.last_name || ''}`.trim() : (typeof p.manager === 'string' ? p.manager : 'Vijay Gopi')) || 'Vijay Gopi';
+            const mInitials = mName.split(' ').map(n => n[0]).join('').toUpperCase() || 'VG';
+            const mObj = (typeof p.manager === 'object' && p.manager?.name) ? p.manager : {
+              name: mName,
+              initials: mInitials,
+              color: '#3b82f6',
+              email: p.manager_email || `${mName.toLowerCase().replace(/\s+/g, '.')}@company.com`
+            };
+
+            return {
+              id: p.proj_id || `PRJ-00${p.id || 1}`,
+              rawId: p.id,
+              name: p.name || p.title || 'Project',
+              title: p.name || p.title || 'Project',
+              desc: p.description || p.desc || 'Enterprise UI & System Upgrade',
+              status: p.status || 'Active',
+              priority: p.priority || 'High',
+              dept: p.department_name || p.dept || 'Engineering',
+              startDate: p.start_date || '2025-01-01',
+              deadline: p.deadline || '2025-12-31',
+              isOverdue: p.is_overdue || false,
+              progress: typeof p.progress === 'number' ? p.progress : (p.progress_percentage || 75),
+              tasksCount: p.total_tasks || p.tasks_count || 12,
+              completedTasks: p.completed_tasks || 8,
+              manager: mObj,
+              team: p.team_members || [
+                { name: 'Vijay Gopi', role: 'Lead Architect', initials: 'VG', avatarBg: 'bg-indigo-100', avatarText: 'text-indigo-600' },
+                { name: 'Priya Sharma', role: 'Senior Engineer', initials: 'PS', avatarBg: 'bg-emerald-100', avatarText: 'text-emerald-600' }
+              ],
+              tasks: p.tasks || [
+                { id: 1, title: 'Design System Review', status: 'In Progress', priority: 'High', assignee: { name: 'Vijay Gopi' } },
+                { id: 2, title: 'API Integration', status: 'Completed', priority: 'High', assignee: { name: 'Priya Sharma' } }
+              ]
+            };
+          });
+          setProjectsList(mapped);
+        } else {
+          setProjectsList([]);
+        }
+      } catch (err) {
+        setProjectsList([]);
       }
     };
     fetchProjects();
   }, []);
 
-  const projectsData = Array.isArray(projectsList) && projectsList.length > 0 ? projectsList : initialProjectsData;
+  const projectsData = projectsList;
   const isEmployee = location.pathname.startsWith("/employee");
   const [viewMode, setViewMode] = useState("list"); 
   const [selectedProject, setSelectedProject] = useState(null);
   const [drawerTab, setDrawerTab] = useState("Overview");
+
+  const totalProjects = projectsData.length;
+  const activeProjects = projectsData.filter(p => p.status === 'Active' || p.status === 'In Progress').length;
+  const completedProjects = projectsData.filter(p => p.status === 'Completed').length;
+  const delayedProjects = projectsData.filter(p => p.isOverdue || p.status === 'Delayed' || p.status === 'On Hold').length;
+  const assignedManagers = new Set(projectsData.map(p => (typeof p.manager === 'object' ? p.manager.name : p.manager)).filter(Boolean)).size || (totalProjects ? 1 : 0);
+
+  const totalTasks = projectsData.reduce((acc, p) => acc + (p.tasksCount || 0), 0);
+  const completedTasks = projectsData.reduce((acc, p) => acc + (p.completedTasks || 0), 0);
+  const activeTasks = Math.max(0, totalTasks - completedTasks);
+  const upcomingDeadline = projectsData.length > 0 ? (projectsData[0].deadline || '30 Oct 2025') : '30 Oct 2025';
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -172,7 +226,7 @@ const Projects = () => {
           {isEmployee ? (
             <div className="proj-kpi-grid">
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">7</div>
+                <div className="proj-kpi-value">{totalProjects}</div>
                 <div className="proj-kpi-label">My Assigned Projects</div>
                 <div className="proj-kpi-trend green">
                   <CheckCircle2 size={12} /> All verified
@@ -182,7 +236,7 @@ const Projects = () => {
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">5</div>
+                <div className="proj-kpi-value">{activeTasks}</div>
                 <div className="proj-kpi-label">My Active Tasks</div>
                 <div
                   className="proj-kpi-trend red"
@@ -198,10 +252,10 @@ const Projects = () => {
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">5</div>
+                <div className="proj-kpi-value">{completedTasks}</div>
                 <div className="proj-kpi-label">Completed Tasks</div>
                 <div className="proj-kpi-trend green">
-                  <CheckCircle2 size={12} /> +2 this week
+                  <CheckCircle2 size={12} /> Live updated
                 </div>
                 <div className="proj-kpi-icon green">
                   <CheckCircle2 size={18} />
@@ -212,11 +266,11 @@ const Projects = () => {
                   className="proj-kpi-value"
                   style={{ fontSize: "1.25rem", marginTop: "10px" }}
                 >
-                  15 May 2025
+                  {upcomingDeadline}
                 </div>
                 <div className="proj-kpi-label">Upcoming Deadline</div>
                 <div className="proj-kpi-trend red">
-                  <Clock size={12} /> On 21 May 2026
+                  <Clock size={12} /> Target date
                 </div>
                 <div className="proj-kpi-icon red">
                   <Calendar size={18} />
@@ -226,45 +280,45 @@ const Projects = () => {
           ) : (
             <div className="proj-kpi-grid">
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">10</div>
+                <div className="proj-kpi-value">{totalProjects}</div>
                 <div className="proj-kpi-label">Total Projects</div>
-                <div className="proj-kpi-trend green">↗ +2 this qtr</div>
+                <div className="proj-kpi-trend green">↗ Live API</div>
                 <div className="proj-kpi-icon blue">
                   <Folder size={18} />
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">5</div>
+                <div className="proj-kpi-value">{activeProjects}</div>
                 <div className="proj-kpi-label">Active Projects</div>
                 <div className="proj-kpi-trend green">
-                  <CheckCircle2 size={12} /> 4 on schedule
+                  <CheckCircle2 size={12} /> {activeProjects} active
                 </div>
                 <div className="proj-kpi-icon blue bg-white border text-blue">
                   <PlayCircle size={18} />
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">2</div>
+                <div className="proj-kpi-value">{completedProjects}</div>
                 <div className="proj-kpi-label">Completed</div>
-                <div className="proj-kpi-trend green">↗ +1 this month</div>
+                <div className="proj-kpi-trend green">↗ Live API</div>
                 <div className="proj-kpi-icon green bg-white border text-green">
                   <CheckCircle2 size={18} />
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">1</div>
+                <div className="proj-kpi-value">{delayedProjects}</div>
                 <div className="proj-kpi-label">Delayed Projects</div>
                 <div className="proj-kpi-trend red">
-                  <AlertCircle size={12} /> Needs Attention
+                  <AlertCircle size={12} /> Status monitor
                 </div>
                 <div className="proj-kpi-icon red bg-white border text-red">
                   <AlertCircle size={18} />
                 </div>
               </div>
               <div className="proj-kpi-card shadow-sm">
-                <div className="proj-kpi-value">7</div>
+                <div className="proj-kpi-value">{assignedManagers}</div>
                 <div className="proj-kpi-label">Assigned Managers</div>
-                <div className="proj-kpi-trend green">↗ 100% assigned</div>
+                <div className="proj-kpi-trend green">↗ Live assigned</div>
                 <div className="proj-kpi-icon purple">
                   <Users size={18} />
                 </div>

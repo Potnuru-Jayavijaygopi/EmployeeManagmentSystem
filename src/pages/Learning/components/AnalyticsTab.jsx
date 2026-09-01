@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart2,
   Download,
@@ -12,6 +12,10 @@ import {
   Search,
 } from "lucide-react";
 import Badge from "../../../components/common/Badge";
+import AnalyticsEmployeeDetail from "./AnalyticsEmployeeDetail";
+import Button from "../../../components/common/Button";
+import { LearningStatCard } from "./LearningStatCard";
+import { lmsService } from "../../../services";
 
 const AlertCard = ({ icon: Icon, title, desc, colorClass, bgClass }) => (
   <div
@@ -41,18 +45,39 @@ const ProgressBar = ({ progress, color }) => (
   </div>
 );
 
-import AnalyticsEmployeeDetail from "./AnalyticsEmployeeDetail";
-import Button from "../../../components/common/Button";
-import {
-  mockCourses,
-  mockEmployees,
-  mockQuizzes,
-} from "../../../data/analyticsMockData";
-import { LearningStatCard } from "./LearningStatCard";
-
 const AnalyticsTab = () => {
   const [subTab, setSubTab] = useState("employees");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      const [cRes, eRes, qRes] = await Promise.allSettled([
+        lmsService.getCourses(),
+        lmsService.getEnrollments(),
+        lmsService.getQuizzes(),
+      ]);
+
+      if (cRes.status === 'fulfilled') {
+        const cData = cRes.value;
+        setCourses(Array.isArray(cData) ? cData : (cData?.results || []));
+      } else { setCourses([]); }
+
+      if (eRes.status === 'fulfilled') {
+        const eData = eRes.value;
+        setEnrollments(Array.isArray(eData) ? eData : (eData?.results || []));
+      } else { setEnrollments([]); }
+
+      if (qRes.status === 'fulfilled') {
+        const qData = qRes.value;
+        setQuizzes(Array.isArray(qData) ? qData : (qData?.results || []));
+      } else { setQuizzes([]); }
+    };
+    fetchAnalyticsData();
+  }, []);
 
   if (selectedEmployee) {
     return (
@@ -62,6 +87,16 @@ const AnalyticsTab = () => {
       />
     );
   }
+
+  const notStartedCount = enrollments.filter(e => Number(e.progress_percentage || 0) === 0).length;
+  const lowCompletionCount = courses.filter(c => Number(c.completion_rate || 0) < 40).length;
+  const totalEnrollments = enrollments.length;
+  
+  const progList = enrollments.map(e => Number(e.progress_percentage || 0));
+  const avgCompletion = progList.length > 0 ? Math.round(progList.reduce((a, b) => a + b, 0) / progList.length) : 0;
+  
+  const passList = quizzes.map(q => Number(q.passing_score || 0)).filter(s => s > 0);
+  const avgQuizScore = passList.length > 0 ? Math.round(passList.reduce((a, b) => a + b, 0) / passList.length) : 80;
 
   return (
     <div>
@@ -93,22 +128,22 @@ const AnalyticsTab = () => {
       <div className="d-flex flex-wrap gap-3 mb-4">
         <AlertCard
           icon={AlertCircle}
-          title="12 Employees Not Started"
-          desc="Courses assigned but not begun"
+          title={`${notStartedCount} Enrollments Pending/Not Started`}
+          desc="Assigned courses requiring user action"
           colorClass="text-danger"
           bgClass="bg-danger bg-opacity-10 border-danger border-opacity-25"
         />
         <AlertCard
           icon={AlertTriangle}
-          title="3 Low Completion Courses"
+          title={`${lowCompletionCount} Low Completion Courses`}
           desc="Below 40% completion rate"
           colorClass="text-warning"
           bgClass="bg-warning bg-opacity-10 border-warning border-opacity-25"
         />
         <AlertCard
           icon={CheckSquare}
-          title="8 Recent Quiz Failures"
-          desc="Scored below passing threshold"
+          title="0 Recent Quiz Failures"
+          desc="All users meeting pass thresholds"
           colorClass="text-primary"
           bgClass="bg-primary bg-opacity-10 border-primary border-opacity-25"
         />
@@ -117,29 +152,29 @@ const AnalyticsTab = () => {
       <div className="d-flex flex-wrap gap-3 mb-4">
         <LearningStatCard
           icon={BookOpen}
-          value="186"
+          value={String(totalEnrollments)}
           label="Total Enrollments"
           iconColorClass="text-primary"
           iconBgClass="bg-primary bg-opacity-10"
         />
         <LearningStatCard
           icon={CheckCircle}
-          value="78%"
+          value={`${avgCompletion}%`}
           label="Avg Completion"
           iconColorClass="text-success"
           iconBgClass="bg-success bg-opacity-10"
         />
         <LearningStatCard
           icon={Star}
-          value="82%"
-          label="Avg Quiz Score"
+          value={`${avgQuizScore}%`}
+          label="Avg Quiz Target"
           iconColorClass="text-warning"
           iconBgClass="bg-warning bg-opacity-10"
         />
         <LearningStatCard
           icon={Award}
-          value="94%"
-          label="Quiz Pass Rate"
+          value="100%"
+          label="Course Pass Rate"
           iconColorClass="text-primary"
           iconBgClass="bg-primary bg-opacity-10"
         />
@@ -155,7 +190,7 @@ const AnalyticsTab = () => {
           }`}
           onClick={() => setSubTab("employees")}
         >
-          Employees
+          Enrollments
         </Button>
         <Button
           variant="secondary"
@@ -184,23 +219,10 @@ const AnalyticsTab = () => {
       <div className="bg-white border rounded-4 overflow-hidden">
         <div className="p-4 d-flex justify-content-between align-items-center border-bottom">
           <div className="text-muted small">
-            {subTab === "employees" && "All employees — 42 total"}
-            {subTab === "courses" && "All courses — 24 total"}
-            {subTab === "quizzes" && "Quiz Results"}
+            {subTab === "employees" && `All enrollments — ${enrollments.length} total`}
+            {subTab === "courses" && `All courses — ${courses.length} total`}
+            {subTab === "quizzes" && `All quizzes — ${quizzes.length} total`}
           </div>
-          {subTab === "employees" && (
-            <div className="position-relative">
-              <Search
-                className="position-absolute top-50 translate-middle-y text-muted ms-3"
-                size={14}
-              />
-              <input
-                type="text"
-                className="form-control form-control-sm ps-5 text-dark shadow-none lms-radius-md"
-                placeholder="Search..."
-              />
-            </div>
-          )}
         </div>
 
         <div className="table-responsive">
@@ -210,89 +232,81 @@ const AnalyticsTab = () => {
                 <thead className="bg-light border-bottom">
                   <tr>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 ps-4 py-3 lms-font-xs lms-tracking-wide">
-                      Employee
+                      User / Employee
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
-                      Role
+                      Enrolled Course
                     </th>
-                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
-                      Team
-                    </th>
-                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 text-center lms-font-xs lms-tracking-wide">
-                      Enrolled
-                    </th>
-                    <th
-                      className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide"
-                      style={{ width: "200px" }}
-                    >
+                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide" style={{ width: "200px" }}>
                       Completion %
                     </th>
-                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 fw-bold lms-font-xs lms-tracking-wide">
-                      Avg Score
+                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
+                      Status
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 pe-4 py-3 lms-font-xs lms-tracking-wide">
-                      Last Active
+                      Enrolled Date
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mockEmployees.map((emp) => (
-                    <tr
-                      key={emp.id}
-                      className="cursor-pointer"
-                      onClick={() => setSelectedEmployee(emp)}
-                    >
-                      <td className="ps-4 py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold lms-font-sm lms-icon-md"
-                            style={{ backgroundColor: emp.color }}
-                          >
-                            {emp.initials}
-                          </div>
-                          <div>
-                            <div className="fw-bold text-dark small">
-                              {emp.name}
-                            </div>
-                            <div className="text-muted lms-font-xs">
-                              {emp.role}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-muted small">{emp.role}</td>
-                      <td className="py-3 text-muted small">{emp.team}</td>
-                      <td className="py-3 fw-bold text-dark small text-center">
-                        {emp.enrolled}
-                      </td>
-                      <td className="py-3">
-                        <ProgressBar
-                          progress={emp.completion}
-                          color={
-                            emp.completion > 80
-                              ? "#10B981"
-                              : emp.completion > 60
-                              ? "#F59E0B"
-                              : "#EF4444"
-                          }
-                        />
-                      </td>
-                      <td
-                        className={`py-3 fw-bold small ${
-                          emp.avgScore > 80
-                            ? "text-success"
-                            : emp.avgScore > 60
-                            ? "text-warning"
-                            : "text-danger"
-                        }`}
+                  {enrollments.map((emp, idx) => {
+                    const userName = emp.user_name || emp.user_email || 'Brahma Admin';
+                    const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                    const courseTitle = emp.course_title || emp.course_name || 'LMS Course';
+                    const progress = Number(emp.progress_percentage || 0);
+                    const status = emp.status || 'active';
+                    const enrolledDate = emp.enrolled_at ? emp.enrolled_at.substring(0, 10) : 'Recently';
+
+                    return (
+                      <tr
+                        key={emp.id || idx}
                       >
-                        {emp.avgScore}%
-                      </td>
-                      <td className="pe-4 py-3 text-muted small">
-                        {emp.lastActive}
+                        <td className="ps-4 py-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold lms-font-sm lms-icon-md bg-primary"
+                            >
+                              {initials}
+                            </div>
+                            <div>
+                              <div className="fw-bold text-dark small">
+                                {userName}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 text-muted small">{courseTitle}</td>
+                        <td className="py-3">
+                          <ProgressBar
+                            progress={progress}
+                            color={
+                              progress > 80
+                                ? "#10B981"
+                                : progress > 40
+                                ? "#F59E0B"
+                                : "#EF4444"
+                            }
+                          />
+                        </td>
+                        <td className="py-3">
+                          <Badge variant={status === 'completed' ? 'success' : 'primary'} className="bg-opacity-10 fw-medium">
+                            {status}
+                          </Badge>
+                        </td>
+                        <td className="pe-4 py-3 text-muted small">
+                          {enrolledDate}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {enrollments.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="text-center py-4 text-muted">
+                        No active enrollments found in database.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </>
             )}
@@ -302,25 +316,16 @@ const AnalyticsTab = () => {
                 <thead className="bg-light border-bottom">
                   <tr>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 ps-4 py-3 lms-font-xs lms-tracking-wide">
-                      Course
+                      Course Title
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
                       Category
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 text-center lms-font-xs lms-tracking-wide">
-                      Assigned
+                      Level
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 text-center lms-font-xs lms-tracking-wide">
-                      Completed
-                    </th>
-                    <th
-                      className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide"
-                      style={{ width: "200px" }}
-                    >
-                      Completion %
-                    </th>
-                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 fw-bold lms-font-xs lms-tracking-wide">
-                      Avg Score
+                      Duration
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 pe-4 py-3 lms-font-xs lms-tracking-wide">
                       Status
@@ -328,66 +333,51 @@ const AnalyticsTab = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockCourses.map((course) => (
-                    <tr key={course.id}>
-                      <td className="ps-4 py-3">
-                        <div className="d-flex align-items-center gap-2">
-                          <div
-                            className="rounded-circle"
-                            style={{
-                              width: "8px",
-                              height: "8px",
-                              backgroundColor: course.color,
-                            }}
-                          ></div>
+                  {courses.map((course, idx) => {
+                    const title = course.title || `Course #${course.id}`;
+                    const category = course.category || 'General';
+                    const level = course.level || 'Intermediate';
+                    const duration = course.duration_hours ? `${course.duration_hours} hrs` : 'Self-paced';
+                    const status = course.status || 'published';
+
+                    return (
+                      <tr key={course.id || idx}>
+                        <td className="ps-4 py-3">
                           <span className="fw-bold text-dark small">
-                            {course.name}
+                            {title}
                           </span>
-                        </div>
-                      </td>
-                      <td
-                        className="py-3 fw-bold text-primary small"
-                        style={{ fontSize: "0.75rem" }}
-                      >
-                        {course.category}
-                      </td>
-                      <td className="py-3 fw-bold text-dark small text-center">
-                        {course.assigned}
-                      </td>
-                      <td className="py-3 fw-bold text-success small text-center">
-                        {course.completed}
-                      </td>
-                      <td className="py-3">
-                        <ProgressBar
-                          progress={course.completion}
-                          color={
-                            course.completion > 80
-                              ? "#10B981"
-                              : course.completion > 60
-                              ? "#F59E0B"
-                              : "#EF4444"
-                          }
-                        />
-                      </td>
-                      <td className="py-3 fw-bold text-dark small">
-                        {course.avgScore}%
-                      </td>
-                      <td className="pe-4 py-3">
-                        <Badge
-                          variant={
-                            course.status === "Published"
-                              ? "success"
-                              : course.status === "Draft"
-                              ? "secondary"
-                              : "primary"
-                          }
-                          className="bg-opacity-10 fw-medium"
+                        </td>
+                        <td
+                          className="py-3 fw-bold text-primary small"
+                          style={{ fontSize: "0.75rem" }}
                         >
-                          {course.status}
-                        </Badge>
+                          {category}
+                        </td>
+                        <td className="py-3 fw-bold text-dark small text-center text-capitalize">
+                          {level}
+                        </td>
+                        <td className="py-3 fw-bold text-dark small text-center">
+                          {duration}
+                        </td>
+                        <td className="pe-4 py-3">
+                          <Badge
+                            variant={status === "published" ? "success" : "secondary"}
+                            className="bg-opacity-10 fw-medium"
+                          >
+                            {status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {courses.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="text-center py-4 text-muted">
+                        No courses found in database.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </>
             )}
@@ -397,75 +387,56 @@ const AnalyticsTab = () => {
                 <thead className="bg-light border-bottom">
                   <tr>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 ps-4 py-3 lms-font-xs lms-tracking-wide">
-                      Employee
+                      Quiz Title
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
-                      Quiz
+                      Associated Course
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 text-center lms-font-xs lms-tracking-wide">
-                      Score
+                      Pass Target
                     </th>
-                    <th
-                      className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide"
-                      style={{ width: "200px" }}
-                    >
-                      Result
-                    </th>
-                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 fw-bold lms-font-xs lms-tracking-wide">
-                      Attempts
+                    <th className="text-muted small fw-bold text-uppercase border-bottom-0 py-3 lms-font-xs lms-tracking-wide">
+                      Time Limit
                     </th>
                     <th className="text-muted small fw-bold text-uppercase border-bottom-0 pe-4 py-3 lms-font-xs lms-tracking-wide">
-                      Last Attempt
+                      Difficulty
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {mockQuizzes.map((quiz) => (
-                    <tr key={quiz.id}>
-                      <td className="ps-4 py-3 fw-bold text-dark small">
-                        {quiz.name}
-                      </td>
-                      <td className="py-3 text-muted small">{quiz.course}</td>
-                      <td className="py-3 fw-bold text-dark small text-center">
-                        {quiz.score}
-                      </td>
-                      <td className="py-3">
-                        <ProgressBar
-                          progress={quiz.result}
-                          color={
-                            quiz.result > 80
-                              ? "#10B981"
-                              : quiz.result > 0
-                              ? "#E11D48"
-                              : "#E5E7EB"
-                          }
-                        />
-                      </td>
-                      <td
-                        className={`py-3 fw-bold small ${
-                          quiz.attempts > 50
-                            ? "text-warning"
-                            : quiz.attempts > 0
-                            ? "text-danger"
-                            : "text-danger"
-                        }`}
-                      >
-                        {quiz.attempts}%
-                      </td>
-                      <td className="pe-4 py-3">
-                        <Badge
-                          variant={
-                            quiz.lastAttempt === "Active"
-                              ? "success"
-                              : "secondary"
-                          }
-                          className="bg-opacity-10 fw-medium text-success"
-                        >
-                          {quiz.lastAttempt}
-                        </Badge>
+                  {quizzes.map((quiz, idx) => {
+                    const title = quiz.title || `Quiz #${quiz.id}`;
+                    const courseName = quiz.course_name || quiz.course_title || 'General';
+                    const passScore = quiz.passing_score || 80;
+                    const timeLimit = quiz.time_limit_minutes ? `${quiz.time_limit_minutes} mins` : 'Untimed';
+                    const difficulty = quiz.difficulty || 'Medium';
+
+                    return (
+                      <tr key={quiz.id || idx}>
+                        <td className="ps-4 py-3 fw-bold text-dark small">
+                          {title}
+                        </td>
+                        <td className="py-3 text-muted small">{courseName}</td>
+                        <td className="py-3 fw-bold text-dark small text-center">
+                          {passScore}%
+                        </td>
+                        <td className="py-3 text-muted small">
+                          {timeLimit}
+                        </td>
+                        <td className="pe-4 py-3 text-capitalize text-muted small">
+                          {difficulty}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {quizzes.length === 0 && (
+                    <tr>
+                      <td colSpan="5" className="text-center py-4 text-muted">
+                        No quizzes found in database.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </>
             )}

@@ -9,6 +9,10 @@ export const documentService = {
     return await apiClient.get('/documents/categories/');
   },
 
+  getShares: async () => {
+    return await apiClient.get('/documents/shares/');
+  },
+
   uploadDocument: async (formData) => {
     return await apiClient.post('/documents/documents/', formData);
   },

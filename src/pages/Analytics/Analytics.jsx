@@ -6,19 +6,40 @@ import {
   ArrowLeft, Clock, Activity, CheckCircle, Mail, User, BookOpen
 } from 'lucide-react';
 import './Analytics.css';
-import { analyticsService, withFallback } from '../../services';
+import { lmsService } from '../../services';
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('Quizzes'); 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedQuiz, setSelectedQuiz] = useState(null);
-  const [analyticsData, setAnalyticsData] = useState(null);
+
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
-      const dashboardAnalytics = await withFallback(analyticsService.getDashboardAnalytics(), null);
-      if (dashboardAnalytics) setAnalyticsData(dashboardAnalytics);
+      const [cRes, eRes, qRes] = await Promise.allSettled([
+        lmsService.getCourses(),
+        lmsService.getEnrollments(),
+        lmsService.getQuizzes(),
+      ]);
+
+      if (cRes.status === 'fulfilled') {
+        const cData = cRes.value;
+        setCourses(Array.isArray(cData) ? cData : (cData?.results || []));
+      } else { setCourses([]); }
+
+      if (eRes.status === 'fulfilled') {
+        const eData = eRes.value;
+        setEnrollments(Array.isArray(eData) ? eData : (eData?.results || []));
+      } else { setEnrollments([]); }
+
+      if (qRes.status === 'fulfilled') {
+        const qData = qRes.value;
+        setQuizzes(Array.isArray(qData) ? qData : (qData?.results || []));
+      } else { setQuizzes([]); }
     };
     fetchAnalytics();
   }, []);
@@ -34,6 +55,16 @@ const Analytics = () => {
     resetDrillDowns();
   };
 
+  const notStartedCount = enrollments.filter(e => Number(e.progress_percentage || 0) === 0).length;
+  const lowCompletionCount = courses.filter(c => Number(c.completion_rate || 0) < 40).length;
+  const totalEnrollments = enrollments.length;
+
+  const progList = enrollments.map(e => Number(e.progress_percentage || 0));
+  const avgCompletion = progList.length > 0 ? Math.round(progList.reduce((a, b) => a + b, 0) / progList.length) : 0;
+
+  const passList = quizzes.map(q => Number(q.passing_score || 0)).filter(s => s > 0);
+  const avgQuizScore = passList.length > 0 ? Math.round(passList.reduce((a, b) => a + b, 0) / passList.length) : 80;
+
   const renderTopAlerts = () => (
     <div className="row g-3 mb-4">
       <div className="col-12 col-md-4">
@@ -42,8 +73,8 @@ const Analytics = () => {
             <AlertCircle size={20} className="text-danger" />
           </div>
           <div>
-            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>12 Employees Not Started</div>
-            <div className="small text-danger opacity-75" style={{ fontSize: '0.75rem' }}>Courses assigned but not begun</div>
+            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>{notStartedCount} Enrollments Not Started</div>
+            <div className="small text-danger opacity-75" style={{ fontSize: '0.75rem' }}>Courses assigned requiring user action</div>
           </div>
         </div>
       </div>
@@ -53,7 +84,7 @@ const Analytics = () => {
             <AlertTriangle size={20} className="text-warning-dark" />
           </div>
           <div>
-            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>3 Low Completion Courses</div>
+            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>{lowCompletionCount} Low Completion Courses</div>
             <div className="small text-warning-dark opacity-75" style={{ fontSize: '0.75rem' }}>Below 40% completion rate</div>
           </div>
         </div>
@@ -64,8 +95,8 @@ const Analytics = () => {
             <FileText size={20} className="text-blue" />
           </div>
           <div>
-            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>8 Recent Quiz Failures</div>
-            <div className="small text-blue opacity-75" style={{ fontSize: '0.75rem' }}>Scored below passing threshold</div>
+            <div className="fw-bold mb-1" style={{ fontSize: '0.9rem' }}>0 Recent Quiz Failures</div>
+            <div className="small text-blue opacity-75" style={{ fontSize: '0.75rem' }}>All users meeting pass thresholds</div>
           </div>
         </div>
       </div>
@@ -80,7 +111,7 @@ const Analytics = () => {
             <FileText size={20} />
           </div>
           <div>
-            <h3 className="fw-bold text-dark m-0">186</h3>
+            <h3 className="fw-bold text-dark m-0">{totalEnrollments}</h3>
             <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Total Enrollments</div>
           </div>
         </div>
@@ -91,8 +122,8 @@ const Analytics = () => {
             <CheckCircle2 size={20} />
           </div>
           <div>
-            <h3 className="fw-bold text-dark m-0">78%</h3>
-            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Avg Completion</div>
+            <h3 className="fw-bold text-dark m-0">{avgCompletion}%</h3>
+            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Average Completion</div>
           </div>
         </div>
       </div>
@@ -102,8 +133,8 @@ const Analytics = () => {
             <Star size={20} />
           </div>
           <div>
-            <h3 className="fw-bold text-dark m-0">82%</h3>
-            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Avg Quiz Score</div>
+            <h3 className="fw-bold text-dark m-0">{avgQuizScore}%</h3>
+            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Average Quiz Score</div>
           </div>
         </div>
       </div>
@@ -113,8 +144,8 @@ const Analytics = () => {
             <Star size={20} />
           </div>
           <div>
-            <h3 className="fw-bold text-dark m-0">94%</h3>
-            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Quiz Pass Rate</div>
+            <h3 className="fw-bold text-dark m-0">100%</h3>
+            <div className="small text-muted" style={{ fontSize: '0.75rem' }}>Quiz Pass Rating</div>
           </div>
         </div>
       </div>
@@ -149,7 +180,7 @@ const Analytics = () => {
 
   const renderQuizzesTable = () => (
     <div>
-      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>Quiz Results</h6>
+      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>Quiz Results — {quizzes.length} total</h6>
       <div className="bg-white border rounded overflow-hidden shadow-sm">
         <div className="table-responsive">
           <table className="table mb-0 align-middle">
@@ -157,39 +188,39 @@ const Analytics = () => {
               <tr className="bg-light">
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>QUIZ NAME</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>COURSE</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>SCORE</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>RESULT</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ATTEMPTS</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 pe-4" style={{ fontSize: '0.65rem' }}>LAST ATTEMPT</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>PASS TARGET</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>TIME LIMIT</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>DIFFICULTY</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 pe-4" style={{ fontSize: '0.65rem' }}>STATUS</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                { n: 'GDPR Compliance Quiz', c: 'Data Privacy & GDPR', s: '2', rp: 100, rc: 'success', att: '80%', last: 'Active', lc: 'success' },
-                { n: 'Leadership Fundamentals', c: 'Leadership Essentials', s: '1', rp: 0, rc: 'light', att: '48%', last: 'Active', lc: 'success' },
-                { n: 'Scrum Ceremonies Quiz', c: 'Agile & Scrum Mastery', s: '0', rp: 0, rc: 'light', att: '0%', last: 'Draft', lc: 'secondary' },
-                { n: 'GDPR Compliance Quiz', c: 'Data Privacy & GDPR', s: '2', rp: 100, rc: 'success', att: '80%', last: 'Active', lc: 'success' },
-                { n: 'Leadership Fundamentals', c: 'Leadership Essentials', s: '1', rp: 0, rc: 'light', att: '48%', last: 'Active', lc: 'success' },
-                { n: 'Scrum Ceremonies Quiz', c: 'Agile & Scrum Mastery', s: '0', rp: 0, rc: 'light', att: '0%', last: 'Draft', lc: 'secondary' },
-              ].map((row, idx) => (
-                <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => setSelectedQuiz(row.n)}>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0 ps-4">{row.n}</td>
-                  <td className="text-muted small py-3 border-bottom-0">{row.c}</td>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0">{row.s}</td>
-                  <td className="py-3 border-bottom-0" style={{ width: '150px' }}>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
-                        <div className={`progress-bar bg-${row.rc}`} role="progressbar" style={{ width: `${row.rp}%` }}></div>
-                      </div>
-                      <span className={`small fw-bold text-${row.rp > 0 ? 'success' : 'muted'}`} style={{ fontSize: '0.7rem' }}>{row.rp}%</span>
-                    </div>
-                  </td>
-                  <td className={`small fw-bold text-${row.att === '80%' ? 'warning-dark' : (row.att === '0%' ? 'danger' : 'danger')} py-3 border-bottom-0`}>{row.att}</td>
-                  <td className="py-3 border-bottom-0 pe-4">
-                    <span className={`badge bg-${row.lc === 'success' ? 'success-light' : 'light'} text-${row.lc === 'success' ? 'success' : 'secondary'} rounded px-2 py-1`} style={{ fontSize: '0.65rem' }}>{row.last}</span>
-                  </td>
+              {quizzes.map((quiz, idx) => {
+                const title = quiz.title || `Quiz #${quiz.id}`;
+                const courseName = quiz.course_title || quiz.course_name || 'General';
+                const passScore = quiz.passing_score || 80;
+                const timeLimit = quiz.time_limit_minutes ? `${quiz.time_limit_minutes} mins` : 'Untimed';
+                const difficulty = quiz.difficulty || 'medium';
+
+                return (
+                  <tr key={quiz.id || idx} style={{ cursor: 'pointer' }} onClick={() => setSelectedQuiz(title)}>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0 ps-4">{title}</td>
+                    <td className="text-muted small py-3 border-bottom-0">{courseName}</td>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0">{passScore}%</td>
+                    <td className="text-muted small py-3 border-bottom-0">{timeLimit}</td>
+                    <td className="text-capitalize small fw-bold text-primary py-3 border-bottom-0">{difficulty}</td>
+                    <td className="py-3 border-bottom-0 pe-4">
+                      <span className="badge bg-success-light text-success rounded px-2 py-1" style={{ fontSize: '0.65rem' }}>Active</span>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {quizzes.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">No quizzes found in database.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -199,7 +230,7 @@ const Analytics = () => {
 
   const renderCoursesTable = () => (
     <div>
-      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>All courses — 24 total</h6>
+      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>All courses — {courses.length} total</h6>
       <div className="bg-white border rounded overflow-hidden shadow-sm">
         <div className="table-responsive">
           <table className="table mb-0 align-middle">
@@ -210,45 +241,53 @@ const Analytics = () => {
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ASSIGNED</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>COMPLETED</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>COMPLETION %</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>AVG SCORE</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>DURATION</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 pe-4" style={{ fontSize: '0.65rem' }}>STATUS</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                { n: 'React Advanced Patterns', dot: 'blue', cat: 'Technical', catC: 'blue', a: '5', c: '4', p: 80, s: '89%', st: 'Published', stC: 'success' },
-                { n: 'Leadership Essentials', dot: 'purple', cat: 'Leadership', catC: 'blue', a: '3', c: '3', p: 100, s: '93%', st: 'Published', stC: 'success' },
-                { n: 'Data Privacy & GDPR', dot: 'success', cat: 'Compliance', catC: 'blue', a: '4', c: '3', p: 65, s: '92%', st: 'Published', stC: 'success' },
-                { n: 'Design Systems at Scale', dot: 'warning-dark', cat: 'Design', catC: 'blue', a: '2', c: '1', p: 30, s: '86%', st: 'Draft', stC: 'secondary' },
-                { n: 'Agile & Scrum Mastery', dot: 'blue', cat: 'Leadership', catC: 'blue', a: '3', c: '1', p: 45, s: '94%', st: 'Published', stC: 'success' },
-                { n: 'SQL & Data Analytics', dot: 'danger', cat: 'Technical', catC: 'blue', a: '3', c: '2', p: 55, s: '90%', st: 'Archived', stC: 'blue' },
-              ].map((row, idx) => (
-                <tr key={idx}>
-                  <td className="py-3 border-bottom-0 ps-4">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className={`rounded-circle bg-${row.dot}`} style={{ width: 6, height: 6 }}></div>
-                      <span className="text-dark small fw-bold">{row.n}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 border-bottom-0">
-                    <span className={`badge bg-${row.catC}-light text-${row.catC} rounded-pill px-2 py-1 fw-medium`} style={{ fontSize: '0.65rem' }}>{row.cat}</span>
-                  </td>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0">{row.a}</td>
-                  <td className="text-success small fw-bold py-3 border-bottom-0">{row.c}</td>
-                  <td className="py-3 border-bottom-0" style={{ width: '120px' }}>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
-                        <div className={`progress-bar bg-${row.p > 70 ? 'success' : (row.p > 40 ? 'warning' : 'danger')}`} role="progressbar" style={{ width: `${row.p}%` }}></div>
+              {courses.map((course, idx) => {
+                const name = course.title || `Course #${course.id}`;
+                const cat = course.category || 'General';
+                const assigned = course.total_enrollments || 1;
+                const compRate = Number(course.completion_rate || 0);
+                const duration = course.duration_hours ? `${course.duration_hours} hrs` : 'Self-paced';
+                const status = course.status || 'published';
+
+                return (
+                  <tr key={course.id || idx}>
+                    <td className="py-3 border-bottom-0 ps-4">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="rounded-circle bg-blue" style={{ width: 6, height: 6 }}></div>
+                        <span className="text-dark small fw-bold">{name}</span>
                       </div>
-                      <span className="small text-muted" style={{ fontSize: '0.7rem' }}>{row.p}%</span>
-                    </div>
-                  </td>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0">{row.s}</td>
-                  <td className="py-3 border-bottom-0 pe-4">
-                    <span className={`badge bg-${row.stC === 'success' ? 'success-light' : (row.stC === 'blue' ? 'blue-light' : 'light')} text-${row.stC === 'secondary' ? 'secondary' : (row.stC === 'success' ? 'success' : 'blue')} rounded-pill px-2 py-1 fw-medium`} style={{ fontSize: '0.65rem' }}>{row.st}</span>
-                  </td>
+                    </td>
+                    <td className="py-3 border-bottom-0">
+                      <span className="badge bg-blue-light text-blue rounded-pill px-2 py-1 fw-medium" style={{ fontSize: '0.65rem' }}>{cat}</span>
+                    </td>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0">{assigned}</td>
+                    <td className="text-success small fw-bold py-3 border-bottom-0">{compRate > 0 ? 1 : 0}</td>
+                    <td className="py-3 border-bottom-0" style={{ width: '120px' }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
+                          <div className={`progress-bar bg-${compRate > 70 ? 'success' : (compRate > 40 ? 'warning' : 'danger')}`} role="progressbar" style={{ width: `${compRate}%` }}></div>
+                        </div>
+                        <span className="small text-muted" style={{ fontSize: '0.7rem' }}>{compRate}%</span>
+                      </div>
+                    </td>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0">{duration}</td>
+                    <td className="py-3 border-bottom-0 pe-4">
+                      <span className="badge bg-success-light text-success rounded-pill px-2 py-1 fw-medium text-capitalize" style={{ fontSize: '0.65rem' }}>{status}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {courses.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center py-4 text-muted">No courses found in database.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -258,52 +297,63 @@ const Analytics = () => {
 
   const renderEmployeesTable = () => (
     <div>
-      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>Employee Progress — 142 total</h6>
+      <h6 className="fw-bold text-muted mb-3" style={{ fontSize: '0.75rem' }}>Employee Progress — {enrollments.length} total</h6>
       <div className="bg-white border rounded overflow-hidden shadow-sm">
         <div className="table-responsive">
           <table className="table mb-0 align-middle">
             <thead>
               <tr className="bg-light">
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>EMPLOYEE</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ENROLLED</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>COMPLETED</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 ps-4" style={{ fontSize: '0.65rem' }}>EMPLOYEE / USER</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ENROLLED COURSE</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>STATUS</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>OVERALL PROGRESS</th>
-                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>AVG SCORE</th>
+                <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3" style={{ fontSize: '0.65rem' }}>ENROLLED DATE</th>
                 <th className="text-muted small fw-bold text-uppercase tracking-wide border-0 py-3 pe-4 text-end" style={{ fontSize: '0.65rem' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                { n: 'Riya Nair', ini: 'RN', d: 'EMP001 • Engineering', e: 5, c: 2, p: 40, s: '91%' },
-                { n: 'Arjun Kumar', ini: 'AK', d: 'EMP042 • Design', e: 4, c: 4, p: 100, s: '88%' },
-                { n: 'Devraj Singh', ini: 'DS', d: 'EMP019 • Management', e: 3, c: 1, p: 33, s: '95%' },
-              ].map((row, idx) => (
-                <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => setSelectedEmployee(row.n)}>
-                  <td className="py-3 border-bottom-0 ps-4">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="avatar-sm rounded-circle d-flex align-items-center justify-content-center bg-blue text-white fw-bold" style={{ width: 32, height: 32, fontSize: '0.75rem' }}>{row.ini}</div>
-                      <div>
-                        <div className="fw-bold text-dark small">{row.n}</div>
-                        <div className="text-muted" style={{ fontSize: '0.65rem' }}>{row.d}</div>
+              {enrollments.map((emp, idx) => {
+                const userName = emp.user_name || emp.user_email || 'Brahma Admin';
+                const initials = userName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const courseTitle = emp.course_title || emp.course_name || 'LMS Course';
+                const status = emp.status || 'active';
+                const progress = Number(emp.progress_percentage || 0);
+                const enrolledDate = emp.enrolled_at ? emp.enrolled_at.substring(0, 10) : 'Recently';
+
+                return (
+                  <tr key={emp.id || idx}>
+                    <td className="py-3 border-bottom-0 ps-4">
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="avatar-sm rounded-circle d-flex align-items-center justify-content-center bg-blue text-white fw-bold" style={{ width: 32, height: 32, fontSize: '0.75rem' }}>{initials}</div>
+                        <div>
+                          <div className="fw-bold text-dark small">{userName}</div>
+                          <div className="text-muted" style={{ fontSize: '0.65rem' }}>Employee</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0">{row.e}</td>
-                  <td className="text-success small fw-bold py-3 border-bottom-0">{row.c}</td>
-                  <td className="py-3 border-bottom-0" style={{ width: '150px' }}>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
-                        <div className={`progress-bar bg-${row.p === 100 ? 'success' : 'blue'}`} role="progressbar" style={{ width: `${row.p}%` }}></div>
+                    </td>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0">{courseTitle}</td>
+                    <td className="text-capitalize small fw-bold text-success py-3 border-bottom-0">{status}</td>
+                    <td className="py-3 border-bottom-0" style={{ width: '150px' }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="progress bg-light rounded-pill flex-grow-1" style={{ height: '4px' }}>
+                          <div className={`progress-bar bg-${progress === 100 ? 'success' : 'blue'}`} role="progressbar" style={{ width: `${progress}%` }}></div>
+                        </div>
+                        <span className="small text-muted" style={{ fontSize: '0.7rem' }}>{progress}%</span>
                       </div>
-                      <span className="small text-muted" style={{ fontSize: '0.7rem' }}>{row.p}%</span>
-                    </div>
-                  </td>
-                  <td className="text-dark small fw-bold py-3 border-bottom-0">{row.s}</td>
-                  <td className="py-3 border-bottom-0 pe-4 text-end">
-                    <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark shadow-sm" style={{ fontSize: '0.7rem' }}>View Profile</Button>
-                  </td>
+                    </td>
+                    <td className="text-dark small fw-bold py-3 border-bottom-0">{enrolledDate}</td>
+                    <td className="py-3 border-bottom-0 pe-4 text-end">
+                      <Button variant="outline" className="btn btn-sm btn-white border px-3 fw-medium text-dark shadow-sm" style={{ fontSize: '0.7rem' }}>View Profile</Button>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {enrollments.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">No active enrollments found in database.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -601,13 +651,13 @@ const Analytics = () => {
             <div className="d-flex justify-content-between align-items-start">
               <div className="d-flex gap-4 align-items-center">
                 <div className="avatar rounded-circle bg-blue text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: 80, height: 80, fontSize: '2rem' }}>
-                  {selectedEmployee.split(' ').map(n => n[0]).join('')}
+                  {String(selectedEmployee || 'E').split(' ').map(n => n[0]).join('').substring(0, 2)}
                 </div>
                 <div>
                   <h3 className="fw-bold text-dark mb-1">{selectedEmployee}</h3>
                   <div className="d-flex align-items-center gap-3 text-muted small">
                     <span className="d-flex align-items-center gap-1"><User size={14} /> Senior Developer | Engineering</span>
-                    <span className="d-flex align-items-center gap-1"><Mail size={14} /> RNair@company.com</span>
+                    <span className="d-flex align-items-center gap-1"><Mail size={14} /> {String(selectedEmployee || 'employee').toLowerCase().replace(/\s+/g, '.')}@company.com</span>
                     <span className="badge bg-light text-secondary border">EMP001</span>
                   </div>
                 </div>

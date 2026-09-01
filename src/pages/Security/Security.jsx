@@ -5,37 +5,84 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './Security.css';
-import { eventsData } from '../../data/securityConstants';
 import Button from '../../components/common/Button';
-import { securityService, withFallback } from '../../services';
+import { securityService } from '../../services';
 
 const Security = () => {
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [showAlert, setShowAlert] = useState(true);
+  const [showAlert, setShowAlert] = useState(false);
   const [securityStatus, setSecurityStatus] = useState(null);
+  const [securitySummary, setSecuritySummary] = useState(null);
   const [rateLimits, setRateLimits] = useState(null);
+  const [eventsList, setEventsList] = useState([]);
 
   useEffect(() => {
-    const fetchSecurity = async () => {
-      const status = await withFallback(securityService.getSecurityStatus(), null);
-      const limits = await withFallback(securityService.getRateLimitStatus(), null);
-      if (status) setSecurityStatus(status);
-      if (limits) setRateLimits(limits);
+    const fetchSecurityData = async () => {
+      try {
+        const status = await securityService.getSecurityStatus();
+        if (status) setSecurityStatus(status);
+      } catch (err) {
+        setSecurityStatus(null);
+      }
+
+      try {
+        const summary = await securityService.getSecuritySummary();
+        if (summary) setSecuritySummary(summary);
+      } catch (err) {
+        setSecuritySummary(null);
+      }
+
+      try {
+        const limits = await securityService.getRateLimitStatus();
+        if (limits) setRateLimits(limits);
+      } catch (err) {
+        setRateLimits(null);
+      }
+
+      try {
+        const logs = await securityService.getActivityLogs();
+        const rawLogs = Array.isArray(logs)
+          ? logs
+          : Array.isArray(logs?.data?.results)
+          ? logs.data.results
+          : Array.isArray(logs?.results)
+          ? logs.results
+          : Array.isArray(logs?.data)
+          ? logs.data
+          : [];
+        setEventsList(rawLogs);
+      } catch (err) {
+        setEventsList([]);
+      }
     };
-    fetchSecurity();
+    fetchSecurityData();
   }, []);
 
   const tabs = ['Dashboard', 'Rate Limits', 'Events', 'Encryption', 'IP Blocklist', 'Configuration'];
+
+  const mappedEvents = eventsList.map((evt, idx) => ({
+    id: evt.id || idx,
+    time: evt.timestamp || evt.time || '2026-08-31 22:33:33',
+    type: evt.action || evt.event_type || 'READ',
+    severity: evt.metadata?.severity || evt.severity || ((evt.status_code && evt.status_code >= 400) ? 'Warning' : 'Info'),
+    user: evt.user_name || evt.user_email || (evt.user_id ? `User #${evt.user_id}` : 'System Admin'),
+    ip: evt.ip_address || evt.ip || '127.0.0.1',
+    details: evt.endpoint ? `${evt.method || 'GET'} ${evt.endpoint}` : (evt.details || 'System Security Access'),
+  }));
+
+  const last24h = securitySummary?.last_24_hours || {};
+  const last7d = securitySummary?.last_7_days || {};
+
   const getEventIcon = (type) => {
-    if (type === 'SENSITIVE DATA ACCESS') return <div className="red-dot"></div>;
-    if (type === 'LOGIN SUCCESS') return <Check size={16} strokeWidth={3} className="green-check" />;
-    if (type === 'LOGIN FAILED') return <X size={16} strokeWidth={3} className="grey-x" />;
-    return null;
+    if (type === 'SENSITIVE DATA ACCESS' || type === 'PERMISSION_DENIED') return <div className="red-dot"></div>;
+    if (type === 'LOGIN SUCCESS' || type === 'LOGIN_SUCCESS' || type === 'READ') return <Check size={16} strokeWidth={3} className="green-check" />;
+    if (type === 'LOGIN FAILED' || type === 'LOGIN_FAILED') return <X size={16} strokeWidth={3} className="grey-x" />;
+    return <Check size={16} strokeWidth={3} className="green-check" />;
   };
 
   const getSeverityBadge = (severity) => {
-    if (severity === 'Info') return <span className="sec-badge info">Info</span>;
-    if (severity === 'Warning') return <span className="sec-badge warning">Warning</span>;
+    if (severity === 'Info' || severity === 'INFO') return <span className="sec-badge info">Info</span>;
+    if (severity === 'Warning' || severity === 'WARNING') return <span className="sec-badge warning">Warning</span>;
     return <span className="sec-badge">{severity}</span>;
   };
 
@@ -98,36 +145,36 @@ const Security = () => {
                 <div className="sec-summary-title">Security Summary — Last 24 Hours</div>
                 <div className="sec-metrics-grid-4x2">
                   <div className="sec-metric-box">
-                    <div className="sm-value green">22</div>
+                    <div className="sm-value green">{last24h.login_success ?? 0}</div>
                     <div className="sm-label">Successful Logins</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value orange">21</div>
+                    <div className="sm-value orange">{last24h.login_failed ?? 0}</div>
                     <div className="sm-label">Failed Logins</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value red">0</div>
+                    <div className="sm-value red">{last24h.login_blocked ?? 0}</div>
                     <div className="sm-label">Blocked Logins</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value blue">0</div>
+                    <div className="sm-value blue">{last24h.rate_limit_exceeded ?? 0}</div>
                     <div className="sm-label">Rate Limits Hit</div>
                   </div>
 
                   <div className="sec-metric-box">
-                    <div className="sm-value dark">0</div>
+                    <div className="sm-value dark">{last24h.password_changes ?? 0}</div>
                     <div className="sm-label">Password Changes</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value red">0</div>
+                    <div className="sm-value red">{last24h.permission_denied ?? 0}</div>
                     <div className="sm-label">Permission Denied</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value dark">0</div>
+                    <div className="sm-value dark">{last24h.suspicious_activity ?? 0}</div>
                     <div className="sm-label">Suspicious Activity</div>
                   </div>
                   <div className="sec-metric-box">
-                    <div className="sm-value teal">49</div>
+                    <div className="sm-value teal">{last24h.total_events ?? eventsList.length}</div>
                     <div className="sm-label">Total Events</div>
                   </div>
                 </div>
@@ -165,27 +212,27 @@ const Security = () => {
               <div className="sec-summary-title">7-Day Statistics</div>
               <div className="sec-metrics-grid-6x1">
                 <div className="sec-metric-box">
-                  <div className="sm-value green">86</div>
+                  <div className="sm-value green">{last7d.login_success ?? 0}</div>
                   <div className="sm-label">Successful Logins</div>
                 </div>
                 <div className="sec-metric-box">
-                  <div className="sm-value orange">24</div>
+                  <div className="sm-value orange">{last7d.login_failed ?? 0}</div>
                   <div className="sm-label">Failed Logins</div>
                 </div>
                 <div className="sec-metric-box">
-                  <div className="sm-value red">0</div>
+                  <div className="sm-value red">{last7d.login_blocked ?? 0}</div>
                   <div className="sm-label">Blocked Logins</div>
                 </div>
                 <div className="sec-metric-box">
-                  <div className="sm-value blue">0</div>
+                  <div className="sm-value blue">{last7d.rate_limit_exceeded ?? 0}</div>
                   <div className="sm-label">Rate Limits</div>
                 </div>
                 <div className="sec-metric-box">
-                  <div className="sm-value dark">0</div>
+                  <div className="sm-value dark">{last7d.suspicious_activity ?? 0}</div>
                   <div className="sm-label">Suspicious</div>
                 </div>
                 <div className="sec-metric-box">
-                  <div className="sm-value teal">123</div>
+                  <div className="sm-value teal">{last7d.total_events ?? eventsList.length}</div>
                   <div className="sm-label">Total Events</div>
                 </div>
               </div>
@@ -196,7 +243,7 @@ const Security = () => {
         {activeTab === 'Rate Limits' && (
           <div className="fade-in">
             <div className="rate-limit-info">
-              User ID: <strong>5</strong> — Your current API rate limit status
+              User ID: <strong>{rateLimits?.user_id || 'System Admin'}</strong> — Your current API rate limit status
             </div>
 
             <div className="rate-limits-grid">
@@ -204,11 +251,11 @@ const Security = () => {
               <div className="rl-card shadow-sm">
                 <div className="rl-header">
                   <div className="rl-title m-0">Default API</div>
-                  <div className="rl-count">100 / 100</div>
+                  <div className="rl-count">{rateLimits?.remaining_requests?.general ?? 100} / {rateLimits?.limits?.default?.limit ?? 100}</div>
                 </div>
                 <div className="rl-remaining">Remaining</div>
                 <div className="rl-progress-bar mt-2">
-                  <div className="rl-progress-fill green" style={{width: '100%'}}></div>
+                  <div className="rl-progress-fill green" style={{width: `${((rateLimits?.remaining_requests?.general ?? 100) / (rateLimits?.limits?.default?.limit ?? 100)) * 100}%`}}></div>
                 </div>
                 <div className="rl-footer mt-2">Resets every 60 seconds</div>
               </div>
@@ -216,11 +263,11 @@ const Security = () => {
               <div className="rl-card shadow-sm">
                 <div className="rl-header">
                   <div className="rl-title m-0">Search API</div>
-                  <div className="rl-count">28 / 30</div>
+                  <div className="rl-count">{rateLimits?.remaining_requests?.search ?? 30} / {rateLimits?.limits?.search?.limit ?? 30}</div>
                 </div>
                 <div className="rl-remaining">Remaining</div>
                 <div className="rl-progress-bar mt-2">
-                  <div className="rl-progress-fill green" style={{width: '93%'}}></div>
+                  <div className="rl-progress-fill green" style={{width: `${((rateLimits?.remaining_requests?.search ?? 30) / (rateLimits?.limits?.search?.limit ?? 30)) * 100}%`}}></div>
                 </div>
                 <div className="rl-footer mt-2">Resets every 60 seconds</div>
               </div>
@@ -228,11 +275,11 @@ const Security = () => {
               <div className="rl-card shadow-sm">
                 <div className="rl-header">
                   <div className="rl-title m-0">Export API</div>
-                  <div className="rl-count">3 / 10</div>
+                  <div className="rl-count">{rateLimits?.remaining_requests?.export ?? 10} / {rateLimits?.limits?.export?.limit ?? 10}</div>
                 </div>
                 <div className="rl-remaining">Remaining</div>
                 <div className="rl-progress-bar mt-2">
-                  <div className="rl-progress-fill orange" style={{width: '30%'}}></div>
+                  <div className="rl-progress-fill orange" style={{width: `${((rateLimits?.remaining_requests?.export ?? 10) / (rateLimits?.limits?.export?.limit ?? 10)) * 100}%`}}></div>
                 </div>
                 <div className="rl-footer mt-2">Resets every 60 seconds</div>
               </div>
@@ -240,7 +287,7 @@ const Security = () => {
               <div className="rl-card shadow-sm">
                 <div className="rl-header">
                   <div className="rl-title m-0">Upload API</div>
-                  <div className="rl-count">20 / 20</div>
+                  <div className="rl-count">{rateLimits?.remaining_requests?.export ?? 20} / {rateLimits?.limits?.upload?.limit ?? 20}</div>
                 </div>
                 <div className="rl-remaining">Remaining</div>
                 <div className="rl-progress-bar mt-2">
@@ -321,7 +368,7 @@ const Security = () => {
             <div className="sec-events-table-wrapper border">
               <div className="sec-table-header bg-light">
                 <div className="sec-table-title">Security Events</div>
-                <div className="sec-table-count">50 events</div>
+                <div className="sec-table-count">{mappedEvents.length} events</div>
               </div>
               <div className="table-responsive">
                 <table className="sec-table">
@@ -337,25 +384,31 @@ const Security = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {eventsData.map((event, idx) => (
-                      <tr key={idx}>
-                        <td>{event.time}</td>
-                        <td>
-                          <div className="event-type">
-                            {getEventIcon(event.type)} {event.type}
-                          </div>
-                        </td>
-                        <td>{getSeverityBadge(event.severity)}</td>
-                        <td>{event.user}</td>
-                        <td className="ip-address">{event.ip}</td>
-                        <td className="text-truncate-custom">{event.details}</td>
-                        <td>
-                          <Button variant="ghost" className="btn btn-link p-0 text-blue text-decoration-none fw-semibold" style={{fontSize: '0.85rem'}}>
-                            View
-                          </Button>
-                        </td>
+                    {mappedEvents.length > 0 ? (
+                      mappedEvents.map((event, idx) => (
+                        <tr key={event.id || idx}>
+                          <td>{event.time}</td>
+                          <td>
+                            <div className="event-type">
+                              {getEventIcon(event.type)} {event.type}
+                            </div>
+                          </td>
+                          <td>{getSeverityBadge(event.severity)}</td>
+                          <td>{event.user}</td>
+                          <td className="ip-address">{event.ip}</td>
+                          <td className="text-truncate-custom">{event.details}</td>
+                          <td>
+                            <Button variant="ghost" className="btn btn-link p-0 text-blue text-decoration-none fw-semibold" style={{fontSize: '0.85rem'}}>
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center p-4 text-slate">No security events found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>

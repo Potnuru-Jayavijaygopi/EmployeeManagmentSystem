@@ -6,7 +6,7 @@ import {
   Send, Check, X, DollarSign, Search, MoreVertical, 
   ChevronLeft, ChevronRight, Utensils, Plane, Users, 
   Smartphone, Building2, PenTool, CheckCircle2,
-  UploadCloud, FileText, Download, Calendar
+  UploadCloud, FileText, Download, Calendar, Eye
 } from 'lucide-react';
 import '../Expenses/AdminExpenses.css'; 
 import { expenseService, withFallback } from '../../services';
@@ -30,19 +30,33 @@ const initialCategories = [
   { id: 'office', title: 'Office Supplies', icon: PenTool, iconClass: 'office', max: '₹1,500.00', type: 'Office', receipts: true, approval: true },
 ];
 
+import AdminClaimDetails from './AdminClaimDetails';
+
 const Expenses = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalType, setModalType] = useState(null); 
   const [isFileSelected, setIsFileSelected] = useState(false);
-  const [claims, setClaims] = useState(initialClaims);
-  const [categories, setCategories] = useState(initialCategories);
+  const [selectedClaim, setSelectedClaim] = useState(null);
+  const [claims, setClaims] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const fetchExpenses = async () => {
-      const claimsData = await withFallback(expenseService.getClaims(), initialClaims);
-      const catData = await withFallback(expenseService.getCategories(), initialCategories);
-      setClaims(Array.isArray(claimsData) ? claimsData : claimsData.results || initialClaims);
-      if (Array.isArray(catData) && catData.length > 0) setCategories(catData);
+      try {
+        const claimsData = await expenseService.getClaims();
+        const rawClaims = Array.isArray(claimsData) ? claimsData : (claimsData?.results && Array.isArray(claimsData.results)) ? claimsData.results : [];
+        setClaims(rawClaims);
+      } catch (err) {
+        setClaims([]);
+      }
+
+      try {
+        const catData = await expenseService.getCategories();
+        const rawCats = Array.isArray(catData) ? catData : (catData?.results && Array.isArray(catData.results)) ? catData.results : [];
+        setCategories(rawCats);
+      } catch (err) {
+        setCategories([]);
+      }
     };
     fetchExpenses();
   }, []);
@@ -417,6 +431,10 @@ const Expenses = () => {
     return null;
   };
 
+  if (selectedClaim) {
+    return <AdminClaimDetails claim={selectedClaim} onBack={() => setSelectedClaim(null)} />;
+  }
+
   return (
     <div className="dashboard-container">
       {renderModal()}
@@ -537,18 +555,22 @@ const Expenses = () => {
                     {renderStatusPill(claim.status)}
                   </td>
                   <td className="px-4 py-3">
-                    {claim.status === 'Draft' ? (
-                      <div className="d-flex align-items-center gap-2">
-                        <Button variant="outline" className="btn btn-sm text-warning-dark border-warning bg-warning-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => setModalType('edit')}>Edit</Button>
-                        <Button className="btn btn-sm bg-success text-white border-0 px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}}>Submit</Button>
-                        <Button variant="icon" className="btn btn-sm btn-light border p-1 text-muted"><MoreVertical size={14}/></Button>
-                      </div>
-                    ) : (
-                      <div className="d-flex align-items-center gap-2">
-                        <Button variant="outline" className="btn btn-sm text-blue border-blue bg-blue-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => claim.status === 'Rejected' ? setModalType('receipts_empty') : setModalType('receipts')}>Receipts</Button>
-                        <Button variant="outline" className="btn btn-sm text-purple border-purple bg-purple-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => setModalType('history')}>History</Button>
-                      </div>
-                    )}
+                    <div className="d-flex align-items-center gap-2">
+                      <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-blue bg-white" title="View Details" onClick={() => setSelectedClaim(claim)}>
+                        <Eye size={14} />
+                      </Button>
+                      {claim.status === 'Draft' ? (
+                        <>
+                          <Button variant="outline" className="btn btn-sm text-warning-dark border-warning bg-warning-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => setModalType('edit')}>Edit</Button>
+                          <Button className="btn btn-sm bg-success text-white border-0 px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}}>Submit</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="outline" className="btn btn-sm text-blue border-blue bg-blue-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => claim.status === 'Rejected' ? setModalType('receipts_empty') : setModalType('receipts')}>Receipts</Button>
+                          <Button variant="outline" className="btn btn-sm text-purple border-purple bg-purple-light px-3 py-1 fw-medium" style={{fontSize: '0.75rem'}} onClick={() => setModalType('history')}>History</Button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

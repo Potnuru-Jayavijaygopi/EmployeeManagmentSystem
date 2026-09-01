@@ -19,20 +19,33 @@ import {
   MoreVertical,
 } from "lucide-react";
 import "./Announcements.css";
-import { initialAnnouncements } from "../../data/intialAnnouncments";
 import Button from "../../components/common/Button";
-import { filters, stats } from "../../data/announcmentsData";
-import { dashboardService, withFallback } from "../../services";
+import { filters } from "../../data/announcmentsData";
+import { dashboardService } from "../../services";
 
 const Announcements = ({ onTabChange, onNavigateHome }) => {
-  const [announcements, setAnnouncements] = useState(initialAnnouncements);
+  const [announcements, setAnnouncements] = useState([]);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      const apiData = await withFallback(dashboardService.getAnnouncements(), initialAnnouncements);
-      setAnnouncements(Array.isArray(apiData) ? apiData : apiData.results || initialAnnouncements);
+      try {
+        const apiData = await dashboardService.getAnnouncements();
+        const rawList = Array.isArray(apiData)
+          ? apiData
+          : Array.isArray(apiData?.data?.results)
+          ? apiData.data.results
+          : Array.isArray(apiData?.results)
+          ? apiData.results
+          : Array.isArray(apiData?.data)
+          ? apiData.data
+          : [];
+        setAnnouncements(rawList);
+      } catch (err) {
+        setAnnouncements([]);
+      }
     };
     fetchAnnouncements();
   }, []);
@@ -177,6 +190,37 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
       </>
     );
   }
+  const mappedAnnouncements = announcements.map((item, idx) => ({
+    id: item.id || idx,
+    type: item.priority === "High" ? "urgent" : "info",
+    category: item.category || (item.priority === "High" ? "Emergency Events" : "General"),
+    title: item.title || "Announcement",
+    description: item.content || item.description || "",
+    content: item.content || item.description || "",
+    author: item.created_by_name || "Admin",
+    date: item.created_at ? new Date(item.created_at).toLocaleDateString() : "Today",
+    expires: item.expires_at ? new Date(item.expires_at).toLocaleDateString() : "No expiry",
+    icon: item.priority === "High" ? AlertCircle : Bell,
+  }));
+
+  const dynamicStats = [
+    { title: "Total Announcements", count: mappedAnnouncements.length, icon: Bell, bg: "bg-blue-light", color: "text-blue" },
+    { title: "Unread", count: mappedAnnouncements.length, icon: Bell, bg: "bg-orange-light", color: "text-orange" },
+    { title: "System Alerts", count: mappedAnnouncements.filter(a => a.type === 'urgent').length, icon: AlertCircle, bg: "bg-red-light", color: "text-red" },
+    { title: "Pending Actions", count: 0, icon: CheckSquare, bg: "bg-purple-light", color: "text-purple" },
+  ];
+
+  const filteredAnnouncements = mappedAnnouncements.filter((a) => {
+    if (activeFilter === "All") return true;
+    if (activeFilter === "General") return a.type !== "urgent";
+    if (activeFilter === "Emergency Events") return a.type === "urgent";
+    if (activeFilter === "Policies") return a.category === "Policies";
+    return true;
+  }).filter((a) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.author.toLowerCase().includes(q);
+  });
 
   return (
     <>
@@ -199,7 +243,7 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
         </div>
 
         <div className="row g-3 mb-4">
-          {stats.map((stat, idx) => (
+          {dynamicStats.map((stat, idx) => (
             <div key={idx} className="col-12 col-md-3">
               <div className="announcement-stat-card">
                 <div>
@@ -235,6 +279,8 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
                 type="text"
                 placeholder="Search notifications..."
                 className="form-control ps-5"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Button
@@ -262,7 +308,7 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
             <div>
               <h5 className="mb-1 fw-bold">Announcements</h5>
               <p className="text-muted mb-0 small">
-                Stay updated with company news
+                Stay updated with company news ({filteredAnnouncements.length} found)
               </p>
             </div>
             <Button variant="outline" className="btn-system btn-system-outline bg-white border text-dark d-flex align-items-center gap-2 px-3">
@@ -271,17 +317,14 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
           </div>
 
           <div className="announcements-list">
-            {announcements
-              .filter(
-                (a) => activeFilter === "All" || a.category === activeFilter
-              )
-              .map((announcement) => {
-                const IconComponent = (typeof announcement.icon === 'function' || typeof announcement.icon === 'object') ? announcement.icon : AlertCircle;
+            {filteredAnnouncements.length > 0 ? (
+              filteredAnnouncements.map((announcement) => {
+                const IconComponent = announcement.type === "urgent" ? AlertCircle : Bell;
                 const isUrgent = announcement.type === "urgent";
                 return (
                   <div
                     key={announcement.id}
-                    className="announcement-list-item bg-white border text-start  rounded mb-3 position-relative d-flex align-items-center p-3 shadow-sm"
+                    className="announcement-list-item bg-white border text-start rounded mb-3 position-relative d-flex align-items-center p-3 shadow-sm"
                     style={{ cursor: "pointer" }}
                     onClick={() => setViewingAnnouncement(announcement)}
                   >
@@ -319,7 +362,7 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
                       </p>
                       <div className="text-muted small text-start">
                         By {announcement.author} <span className="mx-1">•</span>{" "}
-                        Expires: {announcement.expires}
+                        Created: {announcement.date}
                       </div>
                     </div>
 
@@ -333,7 +376,14 @@ const Announcements = ({ onTabChange, onNavigateHome }) => {
                     </div>
                   </div>
                 );
-              })}
+              })
+            ) : (
+              <div className="text-center p-5 text-slate bg-white border rounded shadow-sm">
+                <Bell size={40} className="mb-2 text-slate opacity-50" />
+                <h6 className="fw-semibold">No announcements found</h6>
+                <p className="small text-muted mb-0">There are no announcements in this category from the API.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

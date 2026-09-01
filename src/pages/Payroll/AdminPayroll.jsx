@@ -37,7 +37,7 @@ import {
 import "./AdminPayroll.css";
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import { employeesData } from "../../data/employeesData";
-import { payrollService, withFallback } from "../../services";
+import { payrollService, employeeService, withFallback } from "../../services";
 
 const AssignSalaryStructure = ({ onCancel }) => (
   <div className="fade-in">
@@ -3930,84 +3930,127 @@ const PayrollApprove = ({ onPrev, onNext }) => (
   </div>
 );
 
-const PayrollAdministration = ({ setView }) => (
-  <div className="fade-in">
-    <div className="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <Breadcrumb items={["Dashboard", "Payroll"]} />
-        <h3 className="fw-bold mt-2 mb-1">Payroll Administration</h3>
-        <p className="text-muted small">
-          Manage salary structures, assignments, payslips and deductions.
-        </p>
-      </div>
-      <div className="d-flex gap-3">
-        <Button
-          variant="outline"
-          className="btn btn-white border px-4 fw-medium d-flex align-items-center gap-2"
-          onClick={() => setView("payroll-history")}
-        >
-          <Clock size={16} /> Payroll History
-        </Button>
-        <Button
-          variant="primary"
-          className="btn btn-primary bg-blue border-0 px-4 fw-medium d-flex align-items-center gap-2"
-          onClick={() => setView("run-payroll-setup")}
-        >
-          <PlayCircle size={16} /> Run Payroll
-        </Button>
-      </div>
-    </div>
+const PayrollAdministration = ({ setView }) => {
+  const [employees, setEmployees] = useState([]);
+  const [payslips, setPayslips] = useState([]);
+  const [payrollRuns, setPayrollRuns] = useState([]);
 
-    <div className="row g-4 mb-4">
-      <div className="col-12 col-md-3">
-        <div className="admin-stat-card stat-card-blue">
-          <div className="admin-stat-icon-wrapper">
-            <Users size={20} />
-          </div>
-          <h4 className="fw-bold mb-1">48</h4>
-          <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
-            Total Employees
-          </span>
-          <span className="text-muted small">Active on payroll</span>
+  useEffect(() => {
+    const fetchAdminStats = async () => {
+      try {
+        const empData = await employeeService.getEmployees();
+        const rawEmps = Array.isArray(empData) ? empData : (empData?.results || []);
+        setEmployees(rawEmps);
+      } catch (e) {
+        setEmployees([]);
+      }
+
+      try {
+        const slipsData = await payrollService.getPayslips();
+        const rawSlips = Array.isArray(slipsData) ? slipsData : (slipsData?.results || []);
+        setPayslips(rawSlips);
+      } catch (e) {
+        setPayslips([]);
+      }
+
+      try {
+        const runsData = await payrollService.getPayrollRuns();
+        const rawRuns = Array.isArray(runsData) ? runsData : (runsData?.results || []);
+        setPayrollRuns(rawRuns);
+      } catch (e) {
+        setPayrollRuns([]);
+      }
+    };
+    fetchAdminStats();
+  }, []);
+
+  const totalEmployees = employees.length;
+  const totalPayrollCost = payslips.reduce((acc, curr) => acc + Number(curr.gross_salary || 0), 0);
+  const totalDeductions = payslips.reduce((acc, curr) => acc + Number(curr.total_deductions || 0), 0);
+  const pendingRuns = payrollRuns.filter((r) => !r.status || ["DRAFT", "PENDING", "GENERATED"].includes(String(r.status).toUpperCase())).length || (payrollRuns.length > 0 ? payrollRuns.length : 0);
+
+  return (
+    <div className="fade-in">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <Breadcrumb items={["Dashboard", "Payroll"]} />
+          <h3 className="fw-bold mt-2 mb-1">Payroll Administration</h3>
+          <p className="text-muted small">
+            Manage salary structures, assignments, payslips and deductions.
+          </p>
+        </div>
+        <div className="d-flex gap-3">
+          <Button
+            variant="outline"
+            className="btn btn-white border px-4 fw-medium d-flex align-items-center gap-2"
+            onClick={() => setView("payroll-history")}
+          >
+            <Clock size={16} /> Payroll History
+          </Button>
+          <Button
+            variant="primary"
+            className="btn btn-primary bg-blue border-0 px-4 fw-medium d-flex align-items-center gap-2"
+            onClick={() => setView("run-payroll-setup")}
+          >
+            <PlayCircle size={16} /> Run Payroll
+          </Button>
         </div>
       </div>
-      <div className="col-12 col-md-3">
-        <div className="admin-stat-card stat-card-green">
-          <div className="admin-stat-icon-wrapper">
-            <DollarSign size={20} />
+
+      <div className="row g-4 mb-4">
+        <div className="col-12 col-md-3">
+          <div className="admin-stat-card stat-card-blue">
+            <div className="admin-stat-icon-wrapper">
+              <Users size={20} />
+            </div>
+            <h4 className="fw-bold mb-1">{totalEmployees}</h4>
+            <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
+              Total Employees
+            </span>
+            <span className="text-muted small">Active on payroll</span>
           </div>
-          <h4 className="fw-bold mb-1">₹34.2L</h4>
-          <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
-            Payroll Cost
-          </span>
-          <span className="text-muted small">April 2026</span>
+        </div>
+        <div className="col-12 col-md-3">
+          <div className="admin-stat-card stat-card-green">
+            <div className="admin-stat-icon-wrapper">
+              <DollarSign size={20} />
+            </div>
+            <h4 className="fw-bold mb-1">
+              {totalPayrollCost >= 100000 
+                ? `₹${(totalPayrollCost / 100000).toFixed(1)}L` 
+                : `₹${totalPayrollCost.toLocaleString('en-IN')}`}
+            </h4>
+            <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
+              Payroll Cost
+            </span>
+            <span className="text-muted small">Live database total</span>
+          </div>
+        </div>
+        <div className="col-12 col-md-3">
+          <div className="admin-stat-card stat-card-orange">
+            <div className="admin-stat-icon-wrapper">
+              <TrendingDown size={20} />
+            </div>
+            <h4 className="fw-bold mb-1">₹{totalDeductions.toLocaleString('en-IN')}</h4>
+            <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
+              Deductions
+            </span>
+            <span className="text-muted small">Active deductions from API</span>
+          </div>
+        </div>
+        <div className="col-12 col-md-3">
+          <div className="admin-stat-card stat-card-red">
+            <div className="admin-stat-icon-wrapper">
+              <AlertTriangle size={20} />
+            </div>
+            <h4 className="fw-bold mb-1">{pendingRuns}</h4>
+            <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
+              Pending Runs
+            </span>
+            <span className="text-muted small">Need Attention</span>
+          </div>
         </div>
       </div>
-      <div className="col-12 col-md-3">
-        <div className="admin-stat-card stat-card-orange">
-          <div className="admin-stat-icon-wrapper">
-            <TrendingDown size={20} />
-          </div>
-          <h4 className="fw-bold mb-1">₹60,000</h4>
-          <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
-            Deductions
-          </span>
-          <span className="text-muted small">Active deductions this year</span>
-        </div>
-      </div>
-      <div className="col-12 col-md-3">
-        <div className="admin-stat-card stat-card-red">
-          <div className="admin-stat-icon-wrapper">
-            <AlertTriangle size={20} />
-          </div>
-          <h4 className="fw-bold mb-1">2</h4>
-          <span className="text-dark small fw-medium text-uppercase letter-spacing-1">
-            Pending Runs
-          </span>
-          <span className="text-muted small">Need Attention</span>
-        </div>
-      </div>
-    </div>
 
     <div className="row g-4 mb-4">
       <div className="col-12 col-lg-7">
@@ -4268,7 +4311,8 @@ const PayrollAdministration = ({ setView }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 const PayrollPay = ({ onPrev, onComplete }) => {
   const [selectedMethod, setSelectedMethod] = useState("bank");
@@ -4865,10 +4909,17 @@ const AdminPayroll = () => {
 
   useEffect(() => {
     const fetchAdminPayroll = async () => {
-      const runs = await withFallback(payrollService.getPayrollRuns(), []);
-      const structures = await withFallback(payrollService.getSalaryStructures(), []);
-      setPayrollRuns(runs);
-      setSalaryStructures(structures);
+      try {
+        const runs = await payrollService.getPayrollRuns();
+        const structures = await payrollService.getSalaryStructures();
+        const rawRuns = Array.isArray(runs) ? runs : (runs?.results && Array.isArray(runs.results)) ? runs.results : [];
+        const rawStruct = Array.isArray(structures) ? structures : (structures?.results && Array.isArray(structures.results)) ? structures.results : [];
+        setPayrollRuns(rawRuns);
+        setSalaryStructures(rawStruct);
+      } catch (err) {
+        setPayrollRuns([]);
+        setSalaryStructures([]);
+      }
     };
     fetchAdminPayroll();
   }, []);

@@ -17,7 +17,20 @@ import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import { expenseService } from "../../services";
 
 const AdminClaimDetails = ({ claim, onBack }) => {
-  const [currentStatus, setCurrentStatus] = useState(claim ? claim.status : "Submitted");
+  const normStatus = (status) => {
+    if (!status) return 'Submitted';
+    const s = String(status).toUpperCase();
+    if (s === 'APPROVED') return 'Approved';
+    if (s === 'REJECTED') return 'Rejected';
+    if (s === 'REIMBURSED') return 'Reimbursed';
+    if (s === 'UNDER_REVIEW') return 'Under Review';
+    if (s === 'SUBMITTED') return 'Submitted';
+    if (s === 'DRAFT') return 'Draft';
+    return status;
+  };
+
+  const statusStr = normStatus(claim?.status);
+  const [currentStatus, setCurrentStatus] = useState(statusStr);
 
   const handleStatusChange = async (newStatus) => {
     setCurrentStatus(newStatus);
@@ -29,6 +42,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
       }
     }
   };
+
   const getStatusColor = (status) => {
     switch (status) {
       case "Submitted":
@@ -46,16 +60,24 @@ const AdminClaimDetails = ({ claim, onBack }) => {
     }
   };
 
-  const statusStyle = getStatusColor(claim.status);
+  const statusStyle = getStatusColor(currentStatus);
 
   let isUnderReview =
-    claim.status === "Under Review" ||
-    claim.status === "Approved" ||
-    claim.status === "Reimbursed" ||
-    claim.status === "Rejected";
-  let isApproved = claim.status === "Approved" || claim.status === "Reimbursed";
-  let isReimbursed = claim.status === "Reimbursed";
-  let isRejected = claim.status === "Rejected";
+    currentStatus === "Under Review" ||
+    currentStatus === "Approved" ||
+    currentStatus === "Reimbursed" ||
+    currentStatus === "Rejected";
+  let isApproved = currentStatus === "Approved" || currentStatus === "Reimbursed";
+  let isReimbursed = currentStatus === "Reimbursed";
+  let isRejected = currentStatus === "Rejected";
+
+  const empName = claim?.employee_name || claim?.name || claim?.user_name || 'Brahma Admin';
+  const initials = empName.split(' ').map(n => n[0]).join('').substring(0, 2);
+  const dept = claim?.department || claim?.dept || 'Engineering';
+  const amountFormatted = claim?.amount ? `₹${Number(claim.amount).toLocaleString('en-IN')}` : (claim?.amount || '₹0.00');
+  const categoryName = claim?.category_name || claim?.category || 'General';
+  const expenseDate = claim?.expense_date || claim?.date || '01 Jan 2026';
+  const description = claim?.description || claim?.desc || claim?.title || 'Expense claim details';
 
   return (
     <div className="admin-claim-details px-4 py-3">
@@ -84,7 +106,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
             <div className="d-flex justify-content-between align-items-start mb-5 border-bottom pb-4">
               <div className="d-flex align-items-center gap-3">
                 <div
-                  className={`avatar-lg rounded-3 d-flex justify-content-center align-items-center text-white bg-${claim.color}`}
+                  className="avatar-lg rounded-3 d-flex justify-content-center align-items-center text-white bg-primary"
                   style={{
                     width: 56,
                     height: 56,
@@ -92,11 +114,11 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                     fontWeight: "bold",
                   }}
                 >
-                  {claim.initials}
+                  {initials}
                 </div>
                 <div>
-                  <h5 className="m-0 fw-bold text-dark">{claim.name}</h5>
-                  <p className="m-0 text-muted small">{claim.dept}</p>
+                  <h5 className="m-0 fw-bold text-dark">{empName}</h5>
+                  <p className="m-0 text-muted small">{dept}</p>
                 </div>
               </div>
               <div
@@ -106,7 +128,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                   color: statusStyle.text,
                 }}
               >
-                {claim.status}
+                {currentStatus}
               </div>
             </div>
 
@@ -118,7 +140,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                 >
                   CLAIM AMOUNT
                 </p>
-                <h3 className="fw-bold text-primary mb-0">{claim.amount}</h3>
+                <h3 className="fw-bold text-primary mb-0">{amountFormatted}</h3>
               </div>
               <div className="col-6">
                 <p
@@ -128,7 +150,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                   CATEGORY
                 </p>
                 <span className="badge bg-light text-dark border px-3 py-2 fw-medium">
-                  {claim.category}
+                  {categoryName}
                 </span>
               </div>
             </div>
@@ -143,7 +165,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                 </p>
                 <div className="d-flex align-items-center gap-2 fw-medium text-dark">
                   <Calendar size={16} className="text-muted" />
-                  {claim.date}
+                  {expenseDate}
                 </div>
               </div>
               <div className="col-6">
@@ -155,8 +177,8 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                 </p>
                 <div className="d-flex align-items-center gap-2 fw-medium text-muted">
                   <Paperclip size={16} />
-                  {claim.receiptType
-                    ? `receipt_001.${claim.receiptType.toLowerCase()}`
+                  {claim?.requires_receipt || claim?.receiptType
+                    ? "receipt_attached.pdf"
                     : "No receipt uploaded"}
                 </div>
               </div>
@@ -174,7 +196,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
               className="bg-light rounded-3 p-4 text-dark border"
               style={{ minHeight: "100px" }}
             >
-              {claim.desc}
+              {description}
             </div>
           </div>
         </div>
@@ -184,7 +206,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
           <div className="bg-white rounded-4 border shadow-sm p-4 mb-4">
             <h6 className="fw-bold mb-3 text-dark">Quick Actions</h6>
 
-            {claim.status === "Under Review" && (
+            {currentStatus === "Under Review" || currentStatus === "Submitted" ? (
               <div className="d-flex flex-column gap-2">
                 <Button
                   className="btn w-100 rounded-3 py-2 fw-medium d-flex align-items-center justify-content-center gap-2"
@@ -193,6 +215,7 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                     color: "#16a34a",
                     border: "1px solid #16a34a",
                   }}
+                  onClick={() => handleStatusChange('Approved')}
                 >
                   <CheckCircle2 size={16} />
                   Approve Claim
@@ -204,14 +227,13 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                     color: "#ef4444",
                     border: "1px solid #ef4444",
                   }}
+                  onClick={() => handleStatusChange('Rejected')}
                 >
                   <XCircle size={16} />
                   Reject Claim
                 </Button>
               </div>
-            )}
-
-            {(claim.status === "Approved" || claim.status === "Submitted") && (
+            ) : currentStatus === "Approved" ? (
               <div className="d-flex flex-column gap-2">
                 <Button
                   className="btn w-100 rounded-3 py-2 fw-medium d-flex align-items-center justify-content-center gap-2"
@@ -220,14 +242,13 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                     color: "#8b5cf6",
                     border: "1px solid #8b5cf6",
                   }}
+                  onClick={() => handleStatusChange('Reimbursed')}
                 >
                   <Check size={16} />
                   Reimbursed
                 </Button>
               </div>
-            )}
-
-            {claim.status === "Rejected" && (
+            ) : currentStatus === "Rejected" ? (
               <div className="d-flex flex-column gap-2">
                 <Button
                   className="btn w-100 rounded-3 py-2 fw-medium d-flex align-items-center justify-content-center gap-2"
@@ -236,14 +257,13 @@ const AdminClaimDetails = ({ claim, onBack }) => {
                     color: "#16a34a",
                     border: "1px solid #16a34a",
                   }}
+                  onClick={() => handleStatusChange('Approved')}
                 >
                   <CheckCircle2 size={16} />
                   Approve Claim
                 </Button>
               </div>
-            )}
-
-            {claim.status === "Reimbursed" && (
+            ) : (
               <div className="text-center text-muted small py-2">
                 No actions available for reimbursed claims.
               </div>

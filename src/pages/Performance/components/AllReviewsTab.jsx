@@ -1,83 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../../../components/common/Badge';
 import Tabs from '../../../components/common/Tabs';
 import { Search, MoreHorizontal, Eye, Edit2, Download, Trash2, Star } from 'lucide-react';
 import ReviewDetailDrawer from './ReviewDetailDrawer';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
 import Button from '../../../components/common/Button';
-
-const mockReviews = [
-  {
-    id: 1,
-    employeeName: 'Emp Test',
-    employeeRole: 'Engineering',
-    initials: 'ET',
-    cycle: 'Q1 2025',
-    type: 'Self',
-    score: 4.4,
-    status: 'completed',
-  },
-  {
-    id: 2,
-    employeeName: 'John Doe',
-    employeeRole: 'Management',
-    initials: 'JD',
-    cycle: 'Q1 2025',
-    type: 'Manager',
-    score: 4.3,
-    status: 'completed',
-  },
-  {
-    id: 3,
-    employeeName: 'Ananya Reddy',
-    employeeRole: 'Design',
-    initials: 'AR',
-    cycle: 'Q2 2025',
-    type: 'Peer',
-    score: null,
-    status: 'pending',
-  },
-  {
-    id: 4,
-    employeeName: 'Kiran Patel',
-    employeeRole: 'HR',
-    initials: 'KP',
-    cycle: 'Dev Frontend',
-    type: 'Self',
-    score: null,
-    status: 'pending',
-  },
-  {
-    id: 5,
-    employeeName: 'Meera Nair',
-    employeeRole: 'Engineering',
-    initials: 'MN',
-    cycle: 'Dev Frontend',
-    type: 'Manager',
-    score: null,
-    status: 'overdue',
-  },
-  {
-    id: 6,
-    employeeName: 'Priya Sharma',
-    employeeRole: 'Product',
-    initials: 'PS',
-    cycle: 'Q2 2025',
-    type: 'Manager',
-    score: 4.3,
-    status: 'completed',
-  },
-  {
-    id: 7,
-    employeeName: 'Ravi Kumar',
-    employeeRole: 'Engineering',
-    initials: 'RK',
-    cycle: 'Q2 2025',
-    type: 'Self',
-    score: 4.3,
-    status: 'completed',
-  },
-];
+import { performanceService } from '../../../services';
 
 const innerTabs = [
   { id: 'all', label: 'All' },
@@ -102,9 +30,30 @@ const StarRating = ({ rating }) => {
 
 const AllReviewsTab = () => {
   const [activeTab, setActiveTab] = useState('all');
+  const [reviews, setReviews] = useState([]);
   const [selectedReview, setSelectedReview] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const data = await performanceService.getReviews();
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        setReviews(list);
+      } catch (err) {
+        setReviews([]);
+      }
+    };
+    fetchReviews();
+  }, []);
+
+  const innerTabs = [
+    { id: 'all', label: `All (${reviews.length})` },
+    { id: 'completed', label: `Completed (${reviews.filter(r => String(r.status).toLowerCase() === 'completed').length})` },
+    { id: 'pending', label: `Pending (${reviews.filter(r => ['pending', 'in_progress', 'draft'].includes(String(r.status).toLowerCase())).length})` },
+    { id: 'overdue', label: `Overdue (${reviews.filter(r => String(r.status).toLowerCase() === 'overdue').length})` },
+  ];
 
   const handleViewDetail = (review) => {
     setSelectedReview(review);
@@ -116,9 +65,11 @@ const AllReviewsTab = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const filteredReviews = mockReviews.filter(review => {
+  const filteredReviews = reviews.filter(review => {
+    const statusStr = String(review.status || '').toLowerCase();
     if (activeTab === 'all') return true;
-    return review.status.toLowerCase() === activeTab;
+    if (activeTab === 'pending') return statusStr === 'pending' || statusStr === 'in_progress' || statusStr === 'draft';
+    return statusStr === activeTab;
   });
 
   return (
@@ -170,69 +121,86 @@ const AllReviewsTab = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredReviews.map((review) => (
-                <tr key={review.id} className="align-middle">
-                  <td>
-                    <input type="checkbox" className="form-check-input" />
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center gap-3">
-                      <div 
-                        className="rounded-circle d-flex align-items-center justify-content-center text-primary fw-medium"
-                        style={{ width: '32px', height: '32px', backgroundColor: '#EFF6FF', fontSize: '0.75rem' }}
+              {filteredReviews.map((review, idx) => {
+                const empName = review.employee_name || review.employeeName || 'Employee';
+                const initials = empName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const role = review.employee_role || review.employeeRole || 'Member';
+                const cycleName = review.cycle_name || review.cycle || 'Quarterly';
+                const type = review.review_type || review.type || 'Performance';
+                const score = review.overall_rating || review.score || null;
+                const status = review.status || 'completed';
+
+                return (
+                  <tr key={review.id || idx} className="align-middle">
+                    <td>
+                      <input type="checkbox" className="form-check-input" />
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center gap-3">
+                        <div 
+                          className="rounded-circle d-flex align-items-center justify-content-center text-primary fw-medium"
+                          style={{ width: '32px', height: '32px', backgroundColor: '#EFF6FF', fontSize: '0.75rem' }}
+                        >
+                          {initials}
+                        </div>
+                        <div>
+                          <div className="fw-medium text-dark">{empName}</div>
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>{role}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-muted small">{cycleName}</td>
+                    <td>
+                      <Badge 
+                        variant={type === 'Manager' ? 'active' : type === 'Peer' ? 'completed' : 'info'} 
+                        size="default"
                       >
-                        {review.initials}
-                      </div>
-                      <div>
-                        <div className="fw-medium text-dark">{review.employeeName}</div>
-                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>{review.employeeRole}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="text-muted small">{review.cycle}</td>
-                  <td>
-                    <Badge 
-                      variant={review.type === 'Manager' ? 'active' : review.type === 'Peer' ? 'completed' : 'info'} 
-                      size="default"
-                    >
-                      {review.type}
-                    </Badge>
-                  </td>
-                  <td>
-                    <StarRating rating={review.score} />
-                  </td>
-                  <td>
-                    <Badge 
-                      variant={review.status === 'completed' ? 'info' : review.status === 'pending' ? 'pending' : 'failed'}
-                      size="default"
-                    >
-                      {review.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    <Button variant="icon" className="btn btn-action-icon dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ borderRadius: '6px' }}>
-                      <MoreHorizontal size={14} />
-                    </Button>
-                    <ul className="dropdown-menu dropdown-menu-end shadow border-0" style={{ fontSize: '0.875rem', borderRadius: '8px' }}>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary" onClick={() => handleViewDetail(review)}><Eye size={14}/> View detail</Button></li>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Edit2 size={14}/> Edit</Button></li>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Download size={14}/> Export PDF</Button></li>
-                      <li><hr className="dropdown-divider" /></li>
-                      <li><Button variant="destructive" className="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" onClick={() => handleDeleteClick(review)}><Trash2 size={14}/> Delete</Button></li>
-                    </ul>
+                        {type}
+                      </Badge>
+                    </td>
+                    <td>
+                      <StarRating rating={score} />
+                    </td>
+                    <td>
+                      <Badge 
+                        variant={status === 'completed' ? 'info' : status === 'pending' ? 'pending' : 'failed'}
+                        size="default"
+                      >
+                        {status}
+                      </Badge>
+                    </td>
+                    <td className="text-end">
+                      <Button variant="icon" className="btn btn-action-icon dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ borderRadius: '6px' }}>
+                        <MoreHorizontal size={14} />
+                      </Button>
+                      <ul className="dropdown-menu dropdown-menu-end shadow border-0" style={{ fontSize: '0.875rem', borderRadius: '8px' }}>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary" onClick={() => handleViewDetail(review)}><Eye size={14}/> View detail</Button></li>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Edit2 size={14}/> Edit</Button></li>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Download size={14}/> Export PDF</Button></li>
+                        <li><hr className="dropdown-divider" /></li>
+                        <li><Button variant="destructive" className="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" onClick={() => handleDeleteClick(review)}><Trash2 size={14}/> Delete</Button></li>
+                      </ul>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filteredReviews.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center py-4 text-muted">
+                    No reviews found for selected status filter.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="d-flex justify-content-between align-items-center mt-4 text-muted small px-1 border-top pt-4">
-          <div>Showing 1–8 of 10</div>
+          <div>Showing 1–{filteredReviews.length} of {reviews.length} reviews</div>
           <div className="d-flex gap-2">
             <Button className="btn-pagination">←</Button>
             <Button className="btn-pagination active">1</Button>
-            <Button className="btn-pagination">2</Button>
             <Button className="btn-pagination">→</Button>
           </div>
         </div>

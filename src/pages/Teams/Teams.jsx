@@ -32,20 +32,55 @@ const Teams = ({ role = "employee" }) => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [memberView, setMemberView] = useState("table");
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [teams, setTeams] = useState(initialTeamsData);
+  const [teams, setTeams] = useState([]);
 
   useEffect(() => {
     const fetchTeamsData = async () => {
-      const apiTeams = await withFallback(employeeService.getTeams(), initialTeamsData);
-      setTeams(Array.isArray(apiTeams) ? apiTeams : apiTeams.results || initialTeamsData);
+      try {
+        const apiTeams = await employeeService.getTeams();
+        const rawList = Array.isArray(apiTeams)
+          ? apiTeams
+          : Array.isArray(apiTeams?.data?.results)
+          ? apiTeams.data.results
+          : Array.isArray(apiTeams?.results)
+          ? apiTeams.results
+          : Array.isArray(apiTeams?.data)
+          ? apiTeams.data
+          : [];
+
+        const mappedTeams = rawList.map((t) => {
+          const tName = t.name || t.title || 'Team';
+          const deptName = t.department_detail?.name || (typeof t.department === 'string' ? t.department : 'Engineering');
+          const leadName = t.lead_detail ? `${t.lead_detail.first_name || ''} ${t.lead_detail.last_name || ''}`.trim() : (typeof t.lead === 'string' ? t.lead : 'Vijay Gopi');
+          const initials = tName.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2) || 'TM';
+          return {
+            ...t,
+            id: t.id,
+            title: tName,
+            name: tName,
+            department: deptName,
+            lead: leadName || 'Vijay Gopi',
+            members: t.member_count || t.members || 0,
+            isLead: true,
+            initials: initials,
+            color: 'blue',
+            bg: 'bg-blue-light',
+            text: 'text-blue',
+          };
+        });
+
+        setTeams(mappedTeams);
+      } catch (err) {
+        setTeams([]);
+      }
     };
     fetchTeamsData();
   }, []);
 
   const teamsData = teams;
-
   const leadTeams = teamsData.filter((t) => t.isLead);
   const memberTeams = teamsData.filter((t) => !t.isLead);
+  const totalMembersCount = teamsData.reduce((acc, t) => acc + (t.members || 0), 0);
 
   return (
     <>
@@ -104,7 +139,7 @@ const Teams = ({ role = "employee" }) => {
                       <Users size={16} />
                     </div>
                     <div className="mgr-stat-label">TEAMS I LEAD</div>
-                    <div className="mgr-stat-value">1</div>
+                    <div className="mgr-stat-value">{leadTeams.length}</div>
                     <div className="mgr-stat-desc">As assigned lead</div>
                   </div>
                 </div>
@@ -114,7 +149,7 @@ const Teams = ({ role = "employee" }) => {
                       <User size={16} />
                     </div>
                     <div className="mgr-stat-label">TOTAL MEMBERS</div>
-                    <div className="mgr-stat-value">12</div>
+                    <div className="mgr-stat-value">{totalMembersCount}</div>
                     <div className="mgr-stat-desc">Under my teams</div>
                   </div>
                 </div>
@@ -124,7 +159,7 @@ const Teams = ({ role = "employee" }) => {
                       <Users size={16} />
                     </div>
                     <div className="mgr-stat-label">ALSO MEMBER OF</div>
-                    <div className="mgr-stat-value">2</div>
+                    <div className="mgr-stat-value">{teamsData.length}</div>
                     <div className="mgr-stat-desc">Other teams</div>
                   </div>
                 </div>

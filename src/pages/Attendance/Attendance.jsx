@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import Breadcrumb from "../../components/dashboard/Breadcrumb";
 import {
@@ -16,14 +16,13 @@ import {
 import Modal from "../../components/common/Modal";
 import "./Attendance.css";
 import Button from "../../components/common/Button";
-import { historyData as initialHistoryData } from "../../data/attendanceHistoryData";
-import { attendanceService, withFallback } from "../../services";
+import { attendanceService } from "../../services";
 
 const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
   const [activeTab, setActiveTab] = useState("Attendance");
   const [sessionState, setSessionState] = useState("pre");
   const [historyView, setHistoryView] = useState("my");
-  const [records, setRecords] = useState(initialHistoryData);
+  const [records, setRecords] = useState([]);
 
   const [isWfhModalOpen, setIsWfhModalOpen] = useState(false);
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
@@ -33,13 +32,31 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
 
   useEffect(() => {
     const fetchAttendanceData = async () => {
-      const apiRecords = await withFallback(attendanceService.getAttendanceRecords(), initialHistoryData);
-      setRecords(Array.isArray(apiRecords) ? apiRecords : apiRecords.results || initialHistoryData);
+      try {
+        const apiRecords = await attendanceService.getAttendanceRecords();
+        const rawList = Array.isArray(apiRecords)
+          ? apiRecords
+          : Array.isArray(apiRecords?.data?.results)
+          ? apiRecords.data.results
+          : Array.isArray(apiRecords?.results)
+          ? apiRecords.results
+          : Array.isArray(apiRecords?.data)
+          ? apiRecords.data
+          : [];
+        setRecords(rawList);
+      } catch (err) {
+        setRecords([]);
+      }
     };
     fetchAttendanceData();
   }, []);
 
-  const historyData = records;
+  const presentCount = records.filter(r => r.status === 'PRESENT' || r.status === 'present').length;
+  const lateCount = records.filter(r => r.is_late || r.status === 'LATE' || r.status === 'late').length;
+  const absentCount = records.filter(r => r.status === 'ABSENT' || r.status === 'absent').length;
+  const wfhCount = records.filter(r => r.status === 'WORK_FROM_HOME' || r.status === 'work_from_home').length;
+  const overtimeCount = records.filter(r => (r.overtime_hours && r.overtime_hours > 0)).length;
+  const attendancePct = records.length > 0 ? Math.round((presentCount / records.length) * 100) : 0;
 
   const handleWfhSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -323,17 +340,17 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
               <div className="bg-white border rounded p-4 shadow-sm">
                 <div className="d-flex justify-content-between mb-4 text-center">
                   <div>
-                    <h3 className="fw-bold m-0 text-dark">18</h3>
+                    <h3 className="fw-bold m-0 text-dark">{presentCount}</h3>
                     <p className="text-muted small m-0">Present</p>
                   </div>
                   <div className="border-end"></div>
                   <div>
-                    <h3 className="fw-bold m-0 text-warning">3</h3>
+                    <h3 className="fw-bold m-0 text-warning">{lateCount}</h3>
                     <p className="text-muted small m-0">Late days</p>
                   </div>
                   <div className="border-end"></div>
                   <div>
-                    <h3 className="fw-bold m-0 text-danger">1</h3>
+                    <h3 className="fw-bold m-0 text-danger">{absentCount}</h3>
                     <p className="text-muted small m-0">Absent</p>
                   </div>
                 </div>
@@ -342,7 +359,7 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
                   <span className="small fw-bold text-muted text-uppercase tracking-wide">
                     MONTHLY ATTENDANCE
                   </span>
-                  <span className="small fw-bold text-blue">82%</span>
+                  <span className="small fw-bold text-blue">{attendancePct}%</span>
                 </div>
                 <div
                   className="progress rounded-pill bg-light"
@@ -350,7 +367,7 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
                 >
                   <div
                     className="progress-bar bg-blue rounded-pill"
-                    style={{ width: "82%" }}
+                    style={{ width: `${attendancePct}%` }}
                   ></div>
                 </div>
               </div>
@@ -441,31 +458,31 @@ const Attendance = ({ onTabChange, onNavigateHome, role = "manager" }) => {
                   {[
                     {
                       label: "PRESENT TODAY",
-                      count: "18",
-                      subtext: "of 24 employees",
+                      count: presentCount,
+                      subtext: `of ${records.length || 0} records`,
                       color: "text-success",
                     },
                     {
                       label: "ABSENT TODAY",
-                      count: "3",
-                      subtext: "2 on approved leave",
+                      count: absentCount,
+                      subtext: "absent records",
                       color: "text-danger",
                     },
                     {
                       label: "LATE ARRIVALS",
-                      count: "2",
-                      subtext: "after 9:30 AM",
+                      count: lateCount,
+                      subtext: "late check-ins",
                       color: "text-warning",
                     },
                     {
                       label: "WORK FROM HOME",
-                      count: "5",
+                      count: wfhCount,
                       subtext: "remote today",
                       color: "text-primary",
                     },
                     {
                       label: "OVERTIME (HRS)",
-                      count: "14",
+                      count: overtimeCount,
                       subtext: "this week",
                       color: "text-purple",
                     },

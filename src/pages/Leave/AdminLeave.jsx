@@ -19,29 +19,101 @@ import {
 } from "lucide-react";
 import "./AdminLeave.css";
 
-import {
-  pendingLeaves as initialPendingLeaves,
-  allLeaves,
-  leaveHistory,
-  leaveBalances,
-} from "../../data/adminLeaveData";
-import { leaveService, withFallback } from "../../services";
+import { leaveService } from "../../services";
 
 const AdminLeave = () => {
   const [activeTab, setActiveTab] = useState("Applications");
   const [activeSubTab, setActiveSubTab] = useState("All Pending");
   const [activeActionMenu, setActiveActionMenu] = useState(null);
-  const [adminLeaves, setAdminLeaves] = useState(initialPendingLeaves);
+  const [adminLeaves, setAdminLeaves] = useState([]);
 
   useEffect(() => {
     const fetchAdminLeaves = async () => {
-      const leavesData = await withFallback(leaveService.getLeaves(), initialPendingLeaves);
-      setAdminLeaves(Array.isArray(leavesData) ? leavesData : leavesData.results || initialPendingLeaves);
+      try {
+        const leavesData = await leaveService.getLeaves();
+        const rawList = Array.isArray(leavesData) 
+          ? leavesData 
+          : Array.isArray(leavesData?.data?.results) 
+          ? leavesData.data.results 
+          : Array.isArray(leavesData?.results) 
+          ? leavesData.results 
+          : Array.isArray(leavesData?.data) 
+          ? leavesData.data 
+          : [];
+        setAdminLeaves(rawList);
+      } catch (err) {
+        setAdminLeaves([]);
+      }
     };
     fetchAdminLeaves();
   }, []);
 
-  const pendingLeaves = adminLeaves;
+  const mappedAdminLeaves = adminLeaves.map((l, idx) => ({
+    id: l.id || idx + 1,
+    name: l.user_name || l.user_email || `User #${l.user}`,
+    dept: 'Engineering',
+    initials: (l.user_name || 'EM').substring(0, 2).toUpperCase(),
+    color: 'blue',
+    type: l.leave_type_name || 'Annual Leave',
+    from: l.start_date || '2026-06-01',
+    to: l.end_date || '2026-06-02',
+    days: `${l.total_days || 1}d`,
+    reason: l.reason || '',
+    status: l.status === 'approved' ? 'Approved' : (l.status === 'rejected' ? 'Rejected' : (l.status === 'cancelled' ? 'Cancelled' : 'Pending')),
+    appliedOn: l.created_at ? l.created_at.split('T')[0] : 'Today'
+  }));
+
+  const pendingLeaves = mappedAdminLeaves.filter(l => l.status === 'Pending');
+  const approvedLeaves = mappedAdminLeaves.filter(l => l.status === 'Approved');
+  const rejectedLeaves = mappedAdminLeaves.filter(l => l.status === 'Rejected');
+  const cancelledLeaves = mappedAdminLeaves.filter(l => l.status === 'Cancelled');
+
+  const pendingCount = pendingLeaves.length;
+  const approvedCount = approvedLeaves.length;
+  const rejectedCount = rejectedLeaves.length;
+  const cancelledCount = cancelledLeaves.length;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const onLeaveTodayCount = adminLeaves.filter(l => l.status === 'approved' && l.start_date <= todayStr && l.end_date >= todayStr).length;
+
+  const displayedLeaves = activeSubTab === 'All Pending' 
+    ? pendingLeaves 
+    : (activeSubTab === 'Approved' 
+      ? approvedLeaves 
+      : (activeSubTab === 'Rejected' 
+        ? rejectedLeaves 
+        : (activeSubTab === 'Cancelled' 
+          ? cancelledLeaves 
+          : mappedAdminLeaves)));
+
+  const leaveHistory = mappedAdminLeaves;
+
+  const leaveBalances = {
+    annual: { 
+      total: 20, 
+      used: adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Annual Leave' || l.leave_type === 1)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0), 
+      remaining: Math.max(0, 20 - adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Annual Leave' || l.leave_type === 1)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0)), 
+      percentage: Math.min(100, Math.round((adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Annual Leave' || l.leave_type === 1)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0) / 20) * 100)) 
+    },
+    sick: { 
+      total: 10, 
+      used: adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Sick Leave' || l.leave_type === 2)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0), 
+      remaining: Math.max(0, 10 - adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Sick Leave' || l.leave_type === 2)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0)), 
+      percentage: Math.min(100, Math.round((adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Sick Leave' || l.leave_type === 2)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0) / 10) * 100)) 
+    },
+    casual: { 
+      total: 5, 
+      used: adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Casual Leave' || l.leave_type === 3)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0), 
+      remaining: Math.max(0, 5 - adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Casual Leave' || l.leave_type === 3)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0)), 
+      percentage: Math.min(100, Math.round((adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Casual Leave' || l.leave_type === 3)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0) / 5) * 100)) 
+    },
+    paid: { 
+      total: 15, 
+      used: adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Paid Leave' || l.leave_type === 4)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0), 
+      remaining: Math.max(0, 15 - adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Paid Leave' || l.leave_type === 4)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0)), 
+      percentage: Math.min(100, Math.round((adminLeaves.filter(l => l.status === 'approved' && (l.leave_type_name === 'Paid Leave' || l.leave_type === 4)).reduce((acc, c) => acc + parseFloat(c.total_days || 0), 0) / 15) * 100)) 
+    }
+  };
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
@@ -93,28 +165,28 @@ const AdminLeave = () => {
         <div className="col-12 col-md-3">
           <div className="summary-card">
             <div className="summary-card-title">PENDING APPROVALS</div>
-            <div className="summary-card-value pending">6</div>
+            <div className="summary-card-value pending">{pendingCount}</div>
             <div className="summary-card-subtext">awaiting review</div>
           </div>
         </div>
         <div className="col-12 col-md-3">
           <div className="summary-card">
             <div className="summary-card-title">APPROVED THIS MONTH</div>
-            <div className="summary-card-value approved">14</div>
+            <div className="summary-card-value approved">{approvedCount}</div>
             <div className="summary-card-subtext">across all types</div>
           </div>
         </div>
         <div className="col-12 col-md-3">
           <div className="summary-card">
             <div className="summary-card-title">ON LEAVE TODAY</div>
-            <div className="summary-card-value on-leave">3</div>
+            <div className="summary-card-value on-leave">{onLeaveTodayCount}</div>
             <div className="summary-card-subtext">approved leave</div>
           </div>
         </div>
         <div className="col-12 col-md-3">
           <div className="summary-card">
             <div className="summary-card-title">REJECTED</div>
-            <div className="summary-card-value rejected">2</div>
+            <div className="summary-card-value rejected">{rejectedCount}</div>
             <div className="summary-card-subtext">this month</div>
           </div>
         </div>
@@ -177,7 +249,7 @@ const AdminLeave = () => {
                 }`}
                 onClick={() => setActiveSubTab("All Pending")}
               >
-                All Pending (6)
+                All Pending ({pendingCount})
               </div>
               <div
                 className={`inner-tab ${
@@ -185,7 +257,7 @@ const AdminLeave = () => {
                 }`}
                 onClick={() => setActiveSubTab("All")}
               >
-                All (20)
+                All ({mappedAdminLeaves.length})
               </div>
               <div
                 className={`inner-tab ${
@@ -193,7 +265,7 @@ const AdminLeave = () => {
                 }`}
                 onClick={() => setActiveSubTab("Approved")}
               >
-                Approved (14)
+                Approved ({approvedCount})
               </div>
               <div
                 className={`inner-tab ${
@@ -201,7 +273,7 @@ const AdminLeave = () => {
                 }`}
                 onClick={() => setActiveSubTab("Rejected")}
               >
-                Rejected
+                Rejected ({rejectedCount})
               </div>
               <div
                 className={`inner-tab ${
@@ -209,7 +281,7 @@ const AdminLeave = () => {
                 }`}
                 onClick={() => setActiveSubTab("Cancelled")}
               >
-                Cancelled
+                Cancelled ({cancelledCount})
               </div>
             </div>
 
@@ -286,117 +358,120 @@ const AdminLeave = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(activeSubTab === "All Pending"
-                    ? pendingLeaves
-                    : allLeaves
-                  ).map((leave) => (
-                    <tr key={leave.id}>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className={`avatar-circle avatar-bg-${leave.color}`}
-                          >
-                            {leave.initials}
-                          </div>
-                          <div>
-                            <div className="fw-semibold text-dark">
-                              {leave.name}
-                            </div>
-                            <div className="small text-muted">{leave.dept}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`leave-type-badge ${getLeaveTypeClass(
-                            leave.type
-                          )}`}
-                        >
-                          {leave.type}
-                        </span>
-                      </td>
-                      <td className="py-3 fw-medium text-dark">{leave.from}</td>
-                      <td className="py-3 text-muted">{leave.to}</td>
-                      <td className="py-3 fw-bold text-dark">{leave.days}</td>
-                      <td className="py-3 text-muted small">{leave.reason}</td>
-                      <td className="py-3">
-                        <span
-                          className={`status-badge ${leave.status.toLowerCase()}`}
-                        >
-                          {leave.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-end position-relative">
-                        <div className="d-flex justify-content-end align-items-center gap-2 pe-2">
-                          {leave.status === "Pending" ? (
-                            <>
-                              <Button
-                                variant="secondary"
-                                className="btn btn-sm btn-light border text-success fw-semibold bg-success-light px-3"
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                className="btn btn-sm btn-light border text-danger fw-semibold bg-danger-light px-3"
-                              >
-                                Reject
-                              </Button>
-                              <Button
-                                variant="icon"
-                                className="btn btn-sm btn-light border p-1 rounded text-muted"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveActionMenu(
-                                    activeActionMenu === leave.id
-                                      ? null
-                                      : leave.id
-                                  );
-                                }}
-                              >
-                                <MoreHorizontal size={16} />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              className="btn btn-sm btn-light border text-blue fw-semibold px-4"
-                            >
-                              View
-                            </Button>
-                          )}
-                        </div>
-                        {activeActionMenu === leave.id &&
-                          leave.status === "Pending" && (
+                  {displayedLeaves.length > 0 ? (
+                    displayedLeaves.map((leave) => (
+                      <tr key={leave.id}>
+                        <td className="py-3">
+                          <div className="d-flex align-items-center gap-3">
                             <div
-                              className="dropdown-menu show position-absolute"
-                              style={{
-                                right: "30px",
-                                top: "40px",
-                                zIndex: 1000,
-                                minWidth: "150px",
-                                textAlign: "left",
-                              }}
-                              onClick={(e) => e.stopPropagation()}
+                              className={`avatar-circle avatar-bg-${leave.color}`}
                             >
-                              <button
-                                className="dropdown-item d-flex align-items-center gap-2 small py-2"
-                                onClick={() => {
-                                  openDrawer(leave);
-                                  setActiveActionMenu(null);
-                                }}
-                              >
-                                <Eye size={14} className="text-muted" /> View
-                                detail
-                              </button>
-                              <button className="dropdown-item d-flex align-items-center gap-2 small py-2 text-danger">
-                                <Trash2 size={14} /> Delete
-                              </button>
+                              {leave.initials}
                             </div>
-                          )}
-                      </td>
+                            <div>
+                              <div className="fw-semibold text-dark">
+                                {leave.name}
+                              </div>
+                              <div className="small text-muted">{leave.dept}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`leave-type-badge ${getLeaveTypeClass(
+                              leave.type
+                            )}`}
+                          >
+                            {leave.type}
+                          </span>
+                        </td>
+                        <td className="py-3 fw-medium text-dark">{leave.from}</td>
+                        <td className="py-3 text-muted">{leave.to}</td>
+                        <td className="py-3 fw-bold text-dark">{leave.days}</td>
+                        <td className="py-3 text-muted small">{leave.reason}</td>
+                        <td className="py-3">
+                          <span
+                            className={`status-badge ${leave.status.toLowerCase()}`}
+                          >
+                            {leave.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-end position-relative">
+                          <div className="d-flex justify-content-end align-items-center gap-2 pe-2">
+                            {leave.status === "Pending" ? (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  className="btn btn-sm btn-light border text-success fw-semibold bg-success-light px-3"
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  className="btn btn-sm btn-light border text-danger fw-semibold bg-danger-light px-3"
+                                >
+                                  Reject
+                                </Button>
+                                <Button
+                                  variant="icon"
+                                  className="btn btn-sm btn-light border p-1 rounded text-muted"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveActionMenu(
+                                      activeActionMenu === leave.id
+                                        ? null
+                                        : leave.id
+                                    );
+                                  }}
+                                >
+                                  <MoreHorizontal size={16} />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                className="btn btn-sm btn-light border text-blue fw-semibold px-4"
+                              >
+                                View
+                              </Button>
+                            )}
+                          </div>
+                          {activeActionMenu === leave.id &&
+                            leave.status === "Pending" && (
+                              <div
+                                className="dropdown-menu show position-absolute"
+                                style={{
+                                  right: "30px",
+                                  top: "40px",
+                                  zIndex: 1000,
+                                  minWidth: "150px",
+                                  textAlign: "left",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  className="dropdown-item d-flex align-items-center gap-2 small py-2"
+                                  onClick={() => {
+                                    openDrawer(leave);
+                                    setActiveActionMenu(null);
+                                  }}
+                                >
+                                  <Eye size={14} className="text-muted" /> View
+                                  detail
+                                </button>
+                                <button className="dropdown-item d-flex align-items-center gap-2 small py-2 text-danger">
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                              </div>
+                            )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-4 text-muted">No leave applications found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -702,52 +777,58 @@ const AdminLeave = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {leaveHistory.map((leave) => (
-                    <tr key={leave.id}>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className={`avatar-circle avatar-bg-${leave.color}`}
-                          >
-                            {leave.initials}
-                          </div>
-                          <div>
-                            <div className="fw-semibold text-dark">
-                              {leave.name}
+                  {leaveHistory.length > 0 ? (
+                    leaveHistory.map((leave) => (
+                      <tr key={leave.id}>
+                        <td className="py-3">
+                          <div className="d-flex align-items-center gap-3">
+                            <div
+                              className={`avatar-circle avatar-bg-${leave.color}`}
+                            >
+                              {leave.initials}
+                            </div>
+                            <div>
+                              <div className="fw-semibold text-dark">
+                                {leave.name}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`leave-type-badge ${getLeaveTypeClass(
-                            leave.type
-                          )}`}
-                        >
-                          {leave.type}
-                        </span>
-                      </td>
-                      <td className="py-3 fw-bold text-dark">{leave.dates}</td>
-                      <td className="py-3 fw-bold text-dark">{leave.days}</td>
-                      <td className="py-3 text-muted small">{leave.reason}</td>
-                      <td className="py-3 text-muted">{leave.appliedOn}</td>
-                      <td className="py-3">
-                        <span
-                          className={`status-badge ${leave.status.toLowerCase()}`}
-                        >
-                          {leave.status}
-                        </span>
-                      </td>
-                      <td className="py-3 text-end pe-2">
-                        <Button
-                          variant="icon"
-                          className="btn btn-sm btn-light border p-1 rounded text-muted"
-                        >
-                          <Eye size={16} />
-                        </Button>
-                      </td>
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`leave-type-badge ${getLeaveTypeClass(
+                              leave.type
+                            )}`}
+                          >
+                            {leave.type}
+                          </span>
+                        </td>
+                        <td className="py-3 fw-bold text-dark">{leave.from} - {leave.to}</td>
+                        <td className="py-3 fw-bold text-dark">{leave.days}</td>
+                        <td className="py-3 text-muted small">{leave.reason}</td>
+                        <td className="py-3 text-muted">{leave.appliedOn}</td>
+                        <td className="py-3">
+                          <span
+                            className={`status-badge ${leave.status.toLowerCase()}`}
+                          >
+                            {leave.status}
+                          </span>
+                        </td>
+                        <td className="py-3 text-end pe-2">
+                          <Button
+                            variant="icon"
+                            className="btn btn-sm btn-light border p-1 rounded text-muted"
+                          >
+                            <Eye size={16} />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-4 text-muted">No leave history found in database.</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

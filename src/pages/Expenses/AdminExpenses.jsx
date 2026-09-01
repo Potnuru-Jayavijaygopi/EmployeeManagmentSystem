@@ -13,33 +13,69 @@ import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import { expenseService, withFallback } from '../../services';
 
 const AdminExpenses = () => {
-  const [activeTab, setActiveTab] = useState('Under Review');
+  const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClaim, setSelectedClaim] = useState(null);
-  const [adminClaims, setAdminClaims] = useState(initialExpensesClaims);
+  const [adminClaims, setAdminClaims] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    const fetchAdminClaims = async () => {
-      const claimsData = await withFallback(expenseService.getClaims(), initialExpensesClaims);
-      setAdminClaims(Array.isArray(claimsData) ? claimsData : claimsData.results || initialExpensesClaims);
+    const fetchData = async () => {
+      try {
+        const claimsData = await expenseService.getClaims();
+        const rawClaims = Array.isArray(claimsData) ? claimsData : (claimsData?.results && Array.isArray(claimsData.results)) ? claimsData.results : [];
+        setAdminClaims(rawClaims);
+      } catch (err) {
+        setAdminClaims([]);
+      }
+
+      try {
+        const catData = await expenseService.getCategories();
+        const rawCats = Array.isArray(catData) ? catData : (catData?.results && Array.isArray(catData.results)) ? catData.results : [];
+        setCategories(rawCats);
+      } catch (err) {
+        setCategories([]);
+      }
     };
-    fetchAdminClaims();
+    fetchData();
   }, []);
 
-  const expensesClaims = adminClaims;
+  const normalizeStatus = (status) => {
+    if (!status) return 'Submitted';
+    const str = String(status).toUpperCase();
+    if (str === 'SUBMITTED') return 'Submitted';
+    if (str === 'UNDER_REVIEW') return 'Under Review';
+    if (str === 'APPROVED') return 'Approved';
+    if (str === 'REJECTED') return 'Rejected';
+    if (str === 'REIMBURSED') return 'Reimbursed';
+    if (str === 'DRAFT') return 'Draft';
+    return status;
+  };
 
-  const filteredClaims = expensesClaims.filter(claim => {
-    if (activeTab !== 'All' && claim.status !== activeTab) {
+  const totalClaimsCount = adminClaims.length;
+  const approvedCount = adminClaims.filter(c => normalizeStatus(c.status) === 'Approved').length;
+  const pendingReviewCount = adminClaims.filter(c => ['Under Review', 'Submitted', 'Draft'].includes(normalizeStatus(c.status))).length;
+  const reimbursedCount = adminClaims.filter(c => normalizeStatus(c.status) === 'Reimbursed').length;
+  const reimbursedTotalAmount = adminClaims
+    .filter(c => normalizeStatus(c.status) === 'Reimbursed')
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const rejectedCount = adminClaims.filter(c => normalizeStatus(c.status) === 'Rejected').length;
+
+  const filteredClaims = adminClaims.filter(claim => {
+    const normStatus = normalizeStatus(claim.status);
+    if (activeTab !== 'All' && normStatus !== activeTab) {
       return false;
     }
-    if (searchQuery && !claim.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+    const empName = claim.employee_name || claim.name || '';
+    if (searchQuery && !empName.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     return true;
   });
 
   const getStatusPillClass = (status) => {
-    switch(status) {
+    const norm = normalizeStatus(status);
+    switch(norm) {
       case 'Submitted': return 'submitted';
       case 'Under Review': return 'under-review';
       case 'Approved': return 'approved';
@@ -50,7 +86,8 @@ const AdminExpenses = () => {
   };
 
   const getStatusDotColor = (status) => {
-    switch(status) {
+    const norm = normalizeStatus(status);
+    switch(norm) {
       case 'Submitted': return '#3b82f6';
       case 'Under Review': return '#f97316';
       case 'Approved': return '#16a34a';
@@ -67,15 +104,14 @@ const AdminExpenses = () => {
   };
 
   const renderCategoryIcon = (iconType) => {
-    switch (iconType) {
-      case 'food': return <Utensils size={20} />;
-      case 'travel': return <Plane size={20} />;
-      case 'client': return <Users size={20} />;
-      case 'communication': return <Phone size={20} />;
-      case 'hotel': return <Building2 size={20} />;
-      case 'office': return <PenTool size={20} />;
-      default: return <Utensils size={20} />;
-    }
+    const typeStr = String(iconType || '').toLowerCase();
+    if (typeStr.includes('food') || typeStr.includes('meal')) return <Utensils size={20} />;
+    if (typeStr.includes('travel')) return <Plane size={20} />;
+    if (typeStr.includes('client') || typeStr.includes('entertainment')) return <Users size={20} />;
+    if (typeStr.includes('comm') || typeStr.includes('phone')) return <Phone size={20} />;
+    if (typeStr.includes('hotel') || typeStr.includes('accommodation')) return <Building2 size={20} />;
+    if (typeStr.includes('office') || typeStr.includes('supplies')) return <PenTool size={20} />;
+    return <Utensils size={20} />;
   };
 
   if (selectedClaim) {
@@ -100,8 +136,8 @@ const AdminExpenses = () => {
                 <CheckCircle2 size={16} />
               </div>
             </div>
-            <div className="summary-card-value">10</div>
-            <div className="summary-card-subtitle success">3 Approved, 4 Pending</div>
+            <div className="summary-card-value">{totalClaimsCount}</div>
+            <div className="summary-card-subtitle success">{approvedCount} Approved, {pendingReviewCount} Pending</div>
           </div>
         </div>
 
@@ -114,7 +150,7 @@ const AdminExpenses = () => {
                 <Send size={16} />
               </div>
             </div>
-            <div className="summary-card-value">4</div>
+            <div className="summary-card-value">{pendingReviewCount}</div>
             <div className="summary-card-subtitle warning">Under review</div>
           </div>
         </div>
@@ -128,8 +164,8 @@ const AdminExpenses = () => {
                 <DollarSign size={16} />
               </div>
             </div>
-            <div className="summary-card-value">2</div>
-            <div className="summary-card-subtitle muted">₹6,000.00 total</div>
+            <div className="summary-card-value">{reimbursedCount}</div>
+            <div className="summary-card-subtitle muted">₹{reimbursedTotalAmount.toLocaleString('en-IN')} total</div>
           </div>
         </div>
 
@@ -142,7 +178,7 @@ const AdminExpenses = () => {
                 <XCircle size={16} />
               </div>
             </div>
-            <div className="summary-card-value">1</div>
+            <div className="summary-card-value">{rejectedCount}</div>
             <div className="summary-card-subtitle danger">Needs review</div>
           </div>
         </div>
@@ -202,54 +238,61 @@ const AdminExpenses = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredClaims.map((claim) => (
-                <tr key={claim.id}>
-                  <td className="px-4 py-3">
-                    <div className="d-flex align-items-center">
-                      <div className={`avatar-sm rounded-circle d-flex justify-content-center align-items-center text-white me-2 bg-${claim.color}`} style={{ width: 32, height: 32, fontSize: '0.8rem' }}>
-                        {claim.initials}
+              {filteredClaims.map((claim) => {
+                const normStatus = normalizeStatus(claim.status);
+                const empName = claim.employee_name || claim.name || 'Employee';
+                const initials = empName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const amtFormatted = claim.amount ? `₹${Number(claim.amount).toLocaleString('en-IN')}` : '₹0.00';
+
+                return (
+                  <tr key={claim.id}>
+                    <td className="px-4 py-3">
+                      <div className="d-flex align-items-center">
+                        <div className="avatar-sm rounded-circle d-flex justify-content-center align-items-center text-white me-2 bg-primary" style={{ width: 32, height: 32, fontSize: '0.8rem' }}>
+                          {initials}
+                        </div>
+                        <div>
+                          <h6 className="m-0 fw-bold text-dark" style={{ fontSize: '0.85rem' }}>{empName}</h6>
+                          <p className="m-0 text-muted" style={{ fontSize: '0.7rem' }}>{claim.employee_id || claim.claim_number || ''}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h6 className="m-0 fw-bold text-dark" style={{ fontSize: '0.85rem' }}>{claim.name}</h6>
-                        <p className="m-0 text-muted" style={{ fontSize: '0.7rem' }}>{claim.dept}</p>
+                    </td>
+                    <td className="fw-bold text-dark py-3" style={{ fontSize: '0.85rem' }}>{amtFormatted}</td>
+                    <td className="py-3">
+                      <span className="badge bg-light text-dark border px-2 py-1 fw-medium" style={{ fontSize: '0.75rem' }}>{claim.category_name || claim.category || 'General'}</span>
+                    </td>
+                    <td className="text-muted py-3" style={{ fontSize: '0.8rem' }}>{claim.expense_date || claim.date || ''}</td>
+                    <td className="text-muted py-3" style={{ fontSize: '0.8rem', maxWidth: '200px' }}>
+                      <div className="text-truncate">{claim.title || claim.desc || claim.description || ''}</div>
+                    </td>
+                    <td className="py-3">
+                      {renderReceiptIcon(claim.receiptType || (claim.requires_receipt ? 'PDF' : '-'))}
+                    </td>
+                    <td className="py-3">
+                      <div className={`status-pill ${getStatusPillClass(normStatus)}`}>
+                        <span style={{ color: getStatusDotColor(normStatus), fontSize: '1.2rem', lineHeight: '0' }}>•</span>
+                        {normStatus}
                       </div>
-                    </div>
-                  </td>
-                  <td className="fw-bold text-dark py-3" style={{ fontSize: '0.85rem' }}>{claim.amount}</td>
-                  <td className="py-3">
-                    <span className="badge bg-light text-dark border px-2 py-1 fw-medium" style={{ fontSize: '0.75rem' }}>{claim.category}</span>
-                  </td>
-                  <td className="text-muted py-3" style={{ fontSize: '0.8rem' }}>{claim.date}</td>
-                  <td className="text-muted py-3" style={{ fontSize: '0.8rem', maxWidth: '200px' }}>
-                    <div className="text-truncate">{claim.desc}</div>
-                  </td>
-                  <td className="py-3">
-                    {renderReceiptIcon(claim.receiptType)}
-                  </td>
-                  <td className="py-3">
-                    <div className={`status-pill ${getStatusPillClass(claim.status)}`}>
-                      <span style={{ color: getStatusDotColor(claim.status), fontSize: '1.2rem', lineHeight: '0' }}>•</span>
-                      {claim.status}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="d-flex gap-2">
-                      <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-blue bg-white" onClick={() => setSelectedClaim(claim)}>
-                        <Eye size={14} />
-                      </Button>
-                      <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-success bg-white" disabled={claim.status === 'Approved' || claim.status === 'Rejected' || claim.status === 'Reimbursed'}>
-                        <Check size={14} />
-                      </Button>
-                      <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-danger bg-white" disabled={claim.status === 'Rejected' || claim.status === 'Reimbursed'}>
-                        <X size={14} />
-                      </Button>
-                      <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-purple bg-white" disabled={claim.status !== 'Approved'}>
-                        <FileCode2 size={14} />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="d-flex gap-2">
+                        <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-blue bg-white" onClick={() => setSelectedClaim(claim)}>
+                          <Eye size={14} />
+                        </Button>
+                        <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-success bg-white" disabled={['Approved', 'Rejected', 'Reimbursed'].includes(normStatus)}>
+                          <Check size={14} />
+                        </Button>
+                        <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-danger bg-white" disabled={['Rejected', 'Reimbursed'].includes(normStatus)}>
+                          <X size={14} />
+                        </Button>
+                        <Button variant="icon" className="btn btn-sm btn-light border p-1 rounded text-purple bg-white" disabled={normStatus !== 'Approved'}>
+                          <FileCode2 size={14} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filteredClaims.length === 0 && (
                 <tr>
@@ -262,11 +305,10 @@ const AdminExpenses = () => {
           </table>
         </div>
         <div className="d-flex justify-content-between align-items-center p-3 border-top bg-white">
-          <span className="text-muted small">Showing 1–{filteredClaims.length} of {expensesClaims.length} claims</span>
+          <span className="text-muted small">Showing 1–{filteredClaims.length} of {adminClaims.length} claims</span>
           <div className="d-flex gap-1">
             <Button variant="outline" className="btn btn-sm btn-white border px-2 text-muted disabled">‹</Button>
             <Button variant="primary" className="btn btn-sm btn-primary bg-blue border-0 px-3">1</Button>
-            <Button variant="outline" className="btn btn-sm btn-white border px-3 text-muted">2</Button>
             <Button variant="outline" className="btn btn-sm btn-white border px-2 text-muted">›</Button>
           </div>
         </div>
@@ -275,45 +317,56 @@ const AdminExpenses = () => {
       <div className="bg-white rounded-3 border shadow-sm p-4">
         <div className="d-flex align-items-center gap-2 mb-4">
           <h5 className="m-0 fw-bold">Expense Categories</h5>
-          <span className="badge bg-light text-secondary rounded-pill border">6</span>
+          <span className="badge bg-light text-secondary rounded-pill border">{categories.length}</span>
         </div>
 
         <div className="row g-4">
-          {expenseCategories.map(cat => (
-            <div key={cat.id} className="col-12 col-md-6 col-lg-4">
-              <div className="category-card">
-                <div className="d-flex align-items-center gap-3 mb-4">
-                  <div className={`category-icon-box ${cat.iconType}`}>
-                    {renderCategoryIcon(cat.iconType)}
-                  </div>
-                  <h6 className="m-0 fw-bold text-dark">{cat.title}</h6>
-                </div>
+          {categories.map(cat => {
+            const maxAmtDisplay = cat.max_amount ? `₹${Number(cat.max_amount).toLocaleString('en-IN')}` : 'No Limit';
+            const catTag = cat.category_type_display || cat.category_type || 'General';
 
-                <div className="d-flex gap-3 mb-4">
-                  <div className="category-info-box">
-                    <div className="category-info-label">BUDGET LIMIT</div>
-                    <div className="category-info-value">{cat.budgetLimit}</div>
-                  </div>
-                  <div className="category-info-box">
-                    <div className="category-info-label">CATEGORY</div>
-                    <div className="category-info-value">{cat.categoryTag}</div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="category-req-label">REQUIREMENTS</div>
-                  <div className="d-flex gap-2">
-                    <div className="pill-badge outline-primary">
-                      Receipts : {cat.receiptsReq ? 'Yes' : 'No'}
+            return (
+              <div key={cat.id} className="col-12 col-md-6 col-lg-4">
+                <div className="category-card">
+                  <div className="d-flex align-items-center gap-3 mb-4">
+                    <div className="category-icon-box food">
+                      {renderCategoryIcon(cat.category_type || cat.name)}
                     </div>
-                    <div className="pill-badge outline-success">
-                      Approval : {cat.approvalReq ? 'Yes' : 'No'}
+                    <h6 className="m-0 fw-bold text-dark">{cat.name}</h6>
+                  </div>
+
+                  <div className="d-flex gap-3 mb-4">
+                    <div className="category-info-box">
+                      <div className="category-info-label">BUDGET LIMIT</div>
+                      <div className="category-info-value">{maxAmtDisplay}</div>
+                    </div>
+                    <div className="category-info-box">
+                      <div className="category-info-label">CATEGORY</div>
+                      <div className="category-info-value">{catTag}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="category-req-label">REQUIREMENTS</div>
+                    <div className="d-flex gap-2">
+                      <div className="pill-badge outline-primary">
+                        Receipts : {cat.requires_receipt ? 'Yes' : 'No'}
+                      </div>
+                      <div className="pill-badge outline-success">
+                        Approval : {cat.approval_required ? 'Yes' : 'No'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            );
+          })}
+
+          {categories.length === 0 && (
+            <div className="col-12 text-center py-4 text-muted">
+              No expense categories available in database.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
