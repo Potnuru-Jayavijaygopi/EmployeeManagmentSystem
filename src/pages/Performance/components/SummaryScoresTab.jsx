@@ -1,8 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../../../components/common/Badge';
 import { Star, TrendingUp, BookOpen, User, Book } from 'lucide-react';
+import { performanceService } from '../../../services';
 
 const SummaryScoresTab = () => {
+  const [reviews, setReviews] = useState([]);
+  const [cycles, setCycles] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const reviewsData = await performanceService.getReviews();
+        const list = Array.isArray(reviewsData) ? reviewsData : (reviewsData?.results || []);
+        setReviews(list);
+      } catch (e) { setReviews([]); }
+
+      try {
+        const cyclesData = await performanceService.getReviewCycles();
+        const cycleList = Array.isArray(cyclesData) ? cyclesData : (cyclesData?.results || []);
+        setCycles(cycleList);
+      } catch (e) { setCycles([]); }
+    };
+    fetchData();
+  }, []);
+
+  const completedCount = reviews.filter(r => String(r.status).toLowerCase() === 'completed').length;
+  const pendingCount = reviews.filter(r => ['pending', 'in_progress', 'draft'].includes(String(r.status).toLowerCase())).length;
+  const ratings = reviews.map(r => Number(r.overall_rating || 0)).filter(r => r > 0);
+  const avgScore = ratings.length > 0 ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : "4.3";
+  const promotionsCount = reviews.filter(r => r.promotion_recommended || String(r.promotion).toLowerCase() === 'recommended').length;
+
   return (
     <div className="mt-3">
 
@@ -18,23 +45,23 @@ const SummaryScoresTab = () => {
 
         <div className="position-relative z-index-1">
           <div className="text-uppercase fw-bold mb-3" style={{ fontSize: '0.75rem', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.8)' }}>
-            Q1 2025 • Overall Performance
+            Performance & Reviews Summary
           </div>
           <div className="d-flex align-items-end gap-5 flex-wrap">
             <div>
-              <div className="display-4 fw-bold lh-1 mb-1">4.2</div>
+              <div className="display-4 fw-bold lh-1 mb-1">{avgScore}</div>
               <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>Average score / 5.0</div>
             </div>
             <div className="pb-1">
-              <div className="fs-3 fw-bold lh-1 mb-1">24</div>
+              <div className="fs-3 fw-bold lh-1 mb-1">{completedCount}</div>
               <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>Completed</div>
             </div>
             <div className="pb-1">
-              <div className="fs-3 fw-bold lh-1 mb-1">8</div>
+              <div className="fs-3 fw-bold lh-1 mb-1">{pendingCount}</div>
               <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>Pending</div>
             </div>
             <div className="pb-1">
-              <div className="fs-3 fw-bold lh-1 mb-1" style={{ color: '#FCD34D' }}>2</div>
+              <div className="fs-3 fw-bold lh-1 mb-1" style={{ color: '#FCD34D' }}>{promotionsCount}</div>
               <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>Promotions</div>
             </div>
           </div>

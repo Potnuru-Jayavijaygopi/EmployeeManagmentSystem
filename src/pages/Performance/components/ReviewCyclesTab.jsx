@@ -1,72 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../../../components/common/Badge';
 import { MoreHorizontal, Edit2, Trash2, BarChart2, Calendar } from 'lucide-react';
 import Button from '../../../components/common/Button';
 import CycleDetailModal from './modals/CycleDetailModal';
-
-const mockCycles = [
-  {
-    id: '1',
-    title: 'Development of Frontend',
-    type: 'semi_annual',
-    status: 'active',
-    startDate: '1/1/2026',
-    endDate: '1/30/2026',
-    participants: 8,
-    progress: 60,
-  },
-  {
-    id: '2',
-    title: 'Q2 2025 Performance Review - Updated',
-    type: 'quarterly',
-    status: 'active',
-    startDate: '4/1/2025',
-    endDate: '6/30/2025',
-    participants: 12,
-    progress: 80,
-  },
-  {
-    id: '3',
-    title: 'Q1 2025 Performance Review',
-    type: 'quarterly',
-    status: 'active',
-    startDate: '1/1/2025',
-    endDate: '3/31/2025',
-    participants: 10,
-    progress: 100,
-  }
-];
-
-const mockActivities = [
-  {
-    id: 1,
-    text: 'Emp Test submitted self-assessment',
-    date: 'Mar 15, 2025',
-    color: 'var(--success)'
-  },
-  {
-    id: 2,
-    text: 'Ravi Kumar completed manager review for Meera Nair',
-    date: 'Mar 14, 2025',
-    color: 'var(--primary-blue)'
-  },
-  {
-    id: 3,
-    text: 'Reminder sent to 3 pending participants',
-    date: 'Mar 10, 2025',
-    color: 'var(--warning)'
-  },
-  {
-    id: 4,
-    text: 'Cycle created and participants assigned',
-    date: '1/1/2026',
-    color: 'var(--sub-text-color)'
-  }
-];
+import { performanceService } from '../../../services';
 
 const ReviewCyclesTab = () => {
-  const [selectedCycle, setSelectedCycle] = React.useState(mockCycles[0]);
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [cycles, setCycles] = useState([]);
+  const [selectedCycle, setSelectedCycle] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchCycles = async () => {
+      try {
+        const data = await performanceService.getReviewCycles();
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        setCycles(list);
+        if (list.length > 0) setSelectedCycle(list[0]);
+      } catch (err) {
+        setCycles([]);
+      }
+    };
+    fetchCycles();
+  }, []);
 
   const handleStatsClick = (e, cycle) => {
     e.stopPropagation(); 
@@ -84,39 +40,39 @@ const ReviewCyclesTab = () => {
       <div className="col-12 col-xl-4">
         <h6 className="text-uppercase text-muted fw-bold small mb-3">Active Cycles</h6>
         <div className="d-flex flex-column gap-3 mb-4">
-          {mockCycles.map((cycle, idx) => (
-            <div 
-              key={cycle.id} 
-              className={`p-3 bg-white rounded-3 cursor-pointer ${selectedCycle?.id === cycle.id ? 'border border-primary border-2 shadow-sm' : 'border'}`}
-              onClick={() => handleCycleClick(cycle)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="d-flex justify-content-between align-items-start mb-1">
-                <h6 className="mb-0 fw-bold">{cycle.title}</h6>
-                <Button variant="outline" className="btn-system btn-system-size-xs btn-system-outline" onClick={(e) => handleStatsClick(e, cycle)}>Stats</Button>
-              </div>
-              <div className="text-muted small mb-2">{cycle.type} · {cycle.status}</div>
-              <div className="text-primary small mb-2 fw-medium">Start: {cycle.startDate} End: {cycle.endDate}</div>
+          {cycles.map((cycle, idx) => {
+            const title = cycle.name || cycle.title || `Cycle #${cycle.id}`;
+            const type = cycle.review_type || cycle.type || 'Quarterly';
+            const status = cycle.status || 'Active';
+            const startDate = cycle.start_date || cycle.startDate || '';
+            const endDate = cycle.end_date || cycle.endDate || '';
+            const progress = cycle.progress_percentage || cycle.progress || 100;
 
-              <div className="d-flex justify-content-between text-muted" style={{ fontSize: '0.75rem' }}>
-                <span>{cycle.participants} participants</span>
-                <span>{cycle.progress}%</span>
+            return (
+              <div 
+                key={cycle.id || idx} 
+                className={`p-3 bg-white rounded-3 cursor-pointer ${selectedCycle?.id === cycle.id ? 'border border-primary border-2 shadow-sm' : 'border'}`}
+                onClick={() => handleCycleClick(cycle)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="d-flex justify-content-between align-items-start mb-1">
+                  <h6 className="mb-0 fw-bold">{title}</h6>
+                  <Button variant="outline" className="btn-system btn-system-size-xs btn-system-outline" onClick={(e) => handleStatsClick(e, cycle)}>Stats</Button>
+                </div>
+                <div className="text-muted small mb-2">{type} · {status}</div>
+                <div className="text-primary small mb-2 fw-medium">Start: {startDate} End: {endDate}</div>
               </div>
-              <div className="progress mt-1" style={{ height: '4px' }}>
-                <div 
-                  className={`progress-bar ${cycle.progress === 100 ? 'bg-success' : 'bg-primary'}`} 
-                  role="progressbar" 
-                  style={{ width: `${cycle.progress}%` }} 
-                  aria-valuenow={cycle.progress} 
-                  aria-valuemin="0" 
-                  aria-valuemax="100"
-                ></div>
-              </div>
+            );
+          })}
+
+          {cycles.length === 0 && (
+            <div className="p-4 bg-white rounded-3 border text-center text-muted">
+              No active review cycles found in database.
             </div>
-          ))}
+          )}
         </div>
 
-        <h6 className="text-uppercase text-muted fw-bold small mb-3">Pending</h6>
+        <h6 className="text-uppercase text-muted fw-bold small mb-3 mt-4">Pending</h6>
         <div className="p-3 bg-white border rounded-3 d-flex justify-content-between align-items-center">
           <span className="text-muted fw-medium small">No pending reviews</span>
           <span className="badge bg-secondary rounded-pill">0</span>
@@ -154,40 +110,39 @@ const ReviewCyclesTab = () => {
               <div className="col-12 col-sm-6 col-md-3">
                 <div className="p-3 rounded-3" style={{ backgroundColor: '#F9FAFB' }}>
                   <div className="text-muted text-uppercase small fw-bold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>Participants</div>
-                  <div className="fs-3 fw-bold">{selectedCycle.participants}</div>
+                  <div className="fs-3 fw-bold">{selectedCycle?.participant_count ?? selectedCycle?.participants ?? 0}</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6 col-md-3">
                 <div className="p-3 rounded-3" style={{ backgroundColor: '#F9FAFB' }}>
                   <div className="text-muted text-uppercase small fw-bold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>Completed</div>
-                  <div className="fs-3 fw-bold text-success">5</div>
+                  <div className="fs-3 fw-bold text-success">{selectedCycle?.review_count ?? 1}</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6 col-md-3">
                 <div className="p-3 rounded-3" style={{ backgroundColor: '#F9FAFB' }}>
                   <div className="text-muted text-uppercase small fw-bold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>Pending</div>
-                  <div className="fs-3 fw-bold text-warning">3</div>
+                  <div className="fs-3 fw-bold text-warning">0</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6 col-md-3">
                 <div className="p-3 rounded-3" style={{ backgroundColor: '#F9FAFB' }}>
                   <div className="text-muted text-uppercase small fw-bold mb-2" style={{ fontSize: '0.7rem', letterSpacing: '0.05em' }}>Progress</div>
-                  <div className="fs-3 fw-bold text-primary">{selectedCycle.progress}%</div>
+                  <div className="fs-3 fw-bold text-primary">{selectedCycle?.progress_percentage ?? selectedCycle?.progress ?? 100}%</div>
                 </div>
               </div>
             </div>
 
             <h6 className="text-uppercase text-muted fw-bold small mb-4" style={{ letterSpacing: '0.05em' }}>Recent Activity</h6>
             <div className="position-relative ms-2">
-
               <div className="position-absolute top-0 bottom-0 start-0 border-start border-2" style={{ left: '8px', zIndex: 1 }}></div>
 
               <div className="d-flex flex-column gap-4 position-relative" style={{ zIndex: 2 }}>
-                {mockActivities.map((act) => (
-                  <div key={act.id} className="d-flex gap-3 align-items-start">
+                {(selectedCycle?.activities || []).map((act, i) => (
+                  <div key={act.id || i} className="d-flex gap-3 align-items-start">
                     <div 
                       className="rounded-circle border border-white border-2 flex-shrink-0" 
-                      style={{ width: '10px', height: '10px', backgroundColor: act.color, marginTop: '5px', marginLeft: '0px' }}
+                      style={{ width: '10px', height: '10px', backgroundColor: act.color || '#3b82f6', marginTop: '5px', marginLeft: '0px' }}
                     ></div>
                     <div>
                       <div className="text-dark small fw-medium">{act.text}</div>
@@ -195,6 +150,12 @@ const ReviewCyclesTab = () => {
                     </div>
                   </div>
                 ))}
+
+                {(!selectedCycle?.activities || selectedCycle.activities.length === 0) && (
+                  <div className="text-muted small ps-4">
+                    No recent activity logs for this review cycle.
+                  </div>
+                )}
               </div>
             </div>
           </div>

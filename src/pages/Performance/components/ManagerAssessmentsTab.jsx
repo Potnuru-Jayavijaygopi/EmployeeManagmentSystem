@@ -1,62 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../../../components/common/Badge';
 import { Search, MoreHorizontal, Eye, Edit2, Download, Trash2, Star, Plus } from 'lucide-react';
 import ReviewDetailDrawer from './ReviewDetailDrawer';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
 import Button from '../../../components/common/Button';
-
-const mockAssessments = [
-  {
-    id: 1,
-    employeeName: 'Emp Test',
-    employeeRole: 'Engineering',
-    initials: 'ET',
-    cycle: 'Q1 2025 Performance Review',
-    score: 4.4,
-    submitted: 'Mar 15, 2025',
-    status: 'completed',
-  },
-  {
-    id: 2,
-    employeeName: 'John Doe',
-    employeeRole: 'Management',
-    initials: 'JD',
-    cycle: 'Q1 2025 Performance Review',
-    score: 4.4,
-    submitted: 'Mar 15, 2025',
-    status: 'completed',
-  },
-  {
-    id: 3,
-    employeeName: 'Ravi Kumar',
-    employeeRole: 'Engineering',
-    initials: 'RK',
-    cycle: 'Q2 2025 Performance Review',
-    score: 4.4,
-    submitted: 'Mar 15, 2025',
-    status: 'completed',
-  },
-  {
-    id: 4,
-    employeeName: 'Priya Sharma',
-    employeeRole: 'Product',
-    initials: 'PS',
-    cycle: 'Q2 2025 Performance Review',
-    score: 4.4,
-    submitted: 'Mar 15, 2025',
-    status: 'completed',
-  },
-  {
-    id: 5,
-    employeeName: 'Kiran Patel',
-    employeeRole: 'HR',
-    initials: 'KP',
-    cycle: 'Development of Frontend',
-    score: null,
-    submitted: '—',
-    status: 'pending',
-  },
-];
+import { performanceService } from '../../../services';
 
 const StarRating = ({ rating }) => {
   if (!rating) return <span className="text-muted">—</span>;
@@ -73,9 +21,23 @@ const StarRating = ({ rating }) => {
 };
 
 const ManagerAssessmentsTab = () => {
+  const [assessments, setAssessments] = useState([]);
   const [selectedReview, setSelectedReview] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchAssessments = async () => {
+      try {
+        const data = await performanceService.getReviews();
+        const list = Array.isArray(data) ? data : (data?.results || []);
+        setAssessments(list);
+      } catch (err) {
+        setAssessments([]);
+      }
+    };
+    fetchAssessments();
+  }, []);
 
   const handleViewDetail = (review) => {
     setSelectedReview(review);
@@ -134,60 +96,76 @@ const ManagerAssessmentsTab = () => {
               </tr>
             </thead>
             <tbody>
-              {mockAssessments.map((review) => (
-                <tr key={review.id} className="align-middle">
-                  <td>
-                    <div className="d-flex align-items-center gap-3">
-                      <div 
-                        className="rounded-circle d-flex align-items-center justify-content-center text-primary fw-medium"
-                        style={{ width: '32px', height: '32px', backgroundColor: '#EFF6FF', fontSize: '0.75rem' }}
+              {assessments.map((review, idx) => {
+                const empName = review.employee_name || review.employeeName || 'Employee';
+                const initials = empName.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const cycleTitle = review.cycle_name || review.cycle || 'Review Cycle';
+                const score = review.overall_rating || review.score || null;
+                const submitted = review.updated_at || review.created_at || 'Recently';
+                const status = review.status || 'completed';
+
+                return (
+                  <tr key={review.id || idx} className="align-middle">
+                    <td>
+                      <div className="d-flex align-items-center gap-3">
+                        <div 
+                          className="rounded-circle d-flex align-items-center justify-content-center text-primary fw-medium"
+                          style={{ width: '32px', height: '32px', backgroundColor: '#EFF6FF', fontSize: '0.75rem' }}
+                        >
+                          {initials}
+                        </div>
+                        <div>
+                          <div className="fw-medium text-dark">{empName}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-muted small">{cycleTitle}</td>
+                    <td>
+                      <StarRating rating={score} />
+                    </td>
+                    <td className="text-muted small">
+                       {submitted}
+                    </td>
+                    <td>
+                      <Badge 
+                        variant={status === 'completed' ? 'info' : status === 'pending' ? 'pending' : 'failed'}
+                        size="default"
                       >
-                        {review.initials}
-                      </div>
-                      <div>
-                        <div className="fw-medium text-dark">{review.employeeName}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="text-muted small">{review.cycle}</td>
-                  <td>
-                    <StarRating rating={review.score} />
-                  </td>
-                  <td className="text-muted small">
-                     {review.submitted}
-                  </td>
-                  <td>
-                    <Badge 
-                      variant={review.status === 'completed' ? 'info' : review.status === 'pending' ? 'pending' : 'failed'}
-                      size="default"
-                    >
-                      {review.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end">
-                    <Button variant="icon" className="btn btn-action-icon dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ borderRadius: '6px' }}>
-                      <MoreHorizontal size={14} />
-                    </Button>
-                    <ul className="dropdown-menu dropdown-menu-end shadow border-0" style={{ fontSize: '0.875rem', borderRadius: '8px' }}>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary" onClick={() => handleViewDetail(review)}><Eye size={14}/> View detail</Button></li>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Edit2 size={14}/> Edit</Button></li>
-                      <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Download size={14}/> Export PDF</Button></li>
-                      <li><hr className="dropdown-divider" /></li>
-                      <li><Button variant="destructive" className="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" onClick={() => handleDeleteClick(review)}><Trash2 size={14}/> Delete</Button></li>
-                    </ul>
+                        {status}
+                      </Badge>
+                    </td>
+                    <td className="text-end">
+                      <Button variant="icon" className="btn btn-action-icon dropdown-toggle-split" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{ borderRadius: '6px' }}>
+                        <MoreHorizontal size={14} />
+                      </Button>
+                      <ul className="dropdown-menu dropdown-menu-end shadow border-0" style={{ fontSize: '0.875rem', borderRadius: '8px' }}>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary" onClick={() => handleViewDetail(review)}><Eye size={14}/> View detail</Button></li>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Edit2 size={14}/> Edit</Button></li>
+                        <li><Button variant="secondary" className="dropdown-item py-2 d-flex align-items-center gap-2 text-secondary"><Download size={14}/> Export PDF</Button></li>
+                        <li><hr className="dropdown-divider" /></li>
+                        <li><Button variant="destructive" className="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" onClick={() => handleDeleteClick(review)}><Trash2 size={14}/> Delete</Button></li>
+                      </ul>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {assessments.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">
+                    No manager assessments found in database.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="d-flex justify-content-between align-items-center mt-4 text-muted small px-1 pt-2">
-          <div>Showing 1–8 of 10</div>
+          <div>Showing 1–{assessments.length} of {assessments.length}</div>
           <div className="d-flex gap-2">
             <Button className="btn-pagination">←</Button>
             <Button className="btn-pagination active">1</Button>
-            <Button className="btn-pagination">2</Button>
             <Button className="btn-pagination">→</Button>
           </div>
         </div>
