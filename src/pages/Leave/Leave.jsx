@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import FilterPills from '../../components/common/FilterPills';
@@ -8,11 +8,8 @@ import {
   Heart, Thermometer, Briefcase, Baby, User, CheckCircle2, X
 } from 'lucide-react';
 import './Leave.css';
-import { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
-import { historyData as initialHistoryData } from '../../data/attendanceHistoryData';
-import { leaveTypes } from '../../data/leaveData';
-import { leaveService, withFallback } from '../../services';
+import { leaveService } from '../../services';
 
 const Leave = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -21,21 +18,48 @@ const Leave = ({ onTabChange, onNavigateHome }) => {
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [leaveForm, setLeaveForm] = useState({ type: '', fromDate: '', toDate: '', reason: '' });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [leaveList, setLeaveList] = useState(initialHistoryData);
+  const [leaveList, setLeaveList] = useState([]);
   const [leaveBalance, setLeaveBalance] = useState(null);
 
   useEffect(() => {
     const fetchLeaves = async () => {
-      const leaves = await withFallback(leaveService.getLeaves(), initialHistoryData);
-      const balance = await withFallback(leaveService.getLeaveBalance(), null);
-      setLeaveList(Array.isArray(leaves) ? leaves : leaves.results || initialHistoryData);
-      if (balance) setLeaveBalance(balance);
+      try {
+        const leaves = await leaveService.getLeaves();
+        const balance = await leaveService.getLeaveBalance();
+        const rawList = Array.isArray(leaves) 
+          ? leaves 
+          : Array.isArray(leaves?.data?.results) 
+          ? leaves.data.results 
+          : Array.isArray(leaves?.results) 
+          ? leaves.results 
+          : Array.isArray(leaves?.data) 
+          ? leaves.data 
+          : [];
+        setLeaveList(rawList);
+        if (balance) setLeaveBalance(balance);
+      } catch (err) {
+        setLeaveList([]);
+      }
     };
 
     fetchLeaves();
   }, []);
 
-  const historyData = leaveList;
+  const mappedLeaves = leaveList.map((item, idx) => ({
+    id: item.id || idx + 1,
+    dateRange: item.start_date && item.end_date ? `${item.start_date} - ${item.end_date}` : '2026-06-01',
+    days: `${item.total_days || 1} day${parseFloat(item.total_days) > 1 ? 's' : ''}`,
+    type: item.leave_type_name || item.leave_type || 'Annual Leave',
+    typeColor: item.leave_type_name === 'Sick Leave' ? 'danger' : (item.leave_type_name === 'Casual Leave' ? 'warning' : 'primary'),
+    reason: item.reason || '',
+    applied: item.created_at ? item.created_at.split('T')[0] : '2026-05-20',
+    status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : 'Pending'
+  }));
+
+  const filteredData = mappedLeaves.filter(row => {
+    if (activeFilter === 'All') return true;
+    return row.status.toLowerCase() === activeFilter.toLowerCase();
+  });
 
   const handleSubmitLeave = async () => {
     try {
@@ -235,52 +259,63 @@ const Leave = ({ onTabChange, onNavigateHome }) => {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="px-4 py-3">
-                      <div className="fw-bold text-dark mb-1">{row.dateRange}</div>
-                      <div className="text-muted small">{row.days}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`badge rounded-pill bg-${row.typeColor}-light border border-${row.typeColor} text-${row.typeColor === 'warning' ? 'warning-dark' : row.typeColor} fw-medium px-3 py-1`}>
-                        {row.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted small">{row.reason}</td>
-                    <td className="px-4 py-3 text-muted small">{row.applied}</td>
-                    <td className="px-4 py-3">
-                      {row.status === 'Approved' && (
-                        <span className="badge rounded-pill bg-success-light border border-success text-success fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
-                          <div className="status-dot bg-success"></div> {row.status}
+                {filteredData.length > 0 ? (
+                  filteredData.map((row, idx) => (
+                    <tr key={idx}>
+                      <td className="px-4 py-3">
+                        <div className="fw-bold text-dark mb-1">{row.dateRange}</div>
+                        <div className="text-muted small">{row.days}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`badge rounded-pill bg-${row.typeColor}-light border border-${row.typeColor} text-${row.typeColor === 'warning' ? 'warning-dark' : row.typeColor} fw-medium px-3 py-1`}>
+                          {row.type}
                         </span>
-                      )}
-                      {row.status === 'Pending' && (
-                        <span className="badge rounded-pill bg-warning-light border border-warning text-warning-dark fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
-                          <div className="status-dot bg-warning"></div> {row.status}
-                        </span>
-                      )}
-                      {row.status === 'Rejected' && (
-                        <span className="badge rounded-pill bg-danger-light border border-danger text-danger fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
-                          <div className="status-dot bg-danger"></div> {row.status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="d-flex justify-content-center gap-2">
-                        <Button variant="secondary" className="btn btn-sm btn-light border px-3 fw-medium text-muted" onClick={() => setSelectedLeave(row)}>View</Button>
-                        {row.status === 'Pending' && (
-                          <Button variant="destructive" className="btn btn-sm btn-light border px-3 fw-medium text-danger">Cancel</Button>
+                      </td>
+                      <td className="px-4 py-3 text-muted small">{row.reason}</td>
+                      <td className="px-4 py-3 text-muted small">{row.applied}</td>
+                      <td className="px-4 py-3">
+                        {row.status === 'Approved' && (
+                          <span className="badge rounded-pill bg-success-light border border-success text-success fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
+                            <div className="status-dot bg-success"></div> {row.status}
+                          </span>
                         )}
-                      </div>
-                    </td>
+                        {row.status === 'Pending' && (
+                          <span className="badge rounded-pill bg-warning-light border border-warning text-warning-dark fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
+                            <div className="status-dot bg-warning"></div> {row.status}
+                          </span>
+                        )}
+                        {row.status === 'Rejected' && (
+                          <span className="badge rounded-pill bg-danger-light border border-danger text-danger fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
+                            <div className="status-dot bg-danger"></div> {row.status}
+                          </span>
+                        )}
+                        {row.status === 'Cancelled' && (
+                          <span className="badge rounded-pill bg-secondary-light border border-secondary text-secondary fw-medium px-3 py-1 d-inline-flex align-items-center gap-1">
+                            <div className="status-dot bg-secondary"></div> {row.status}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="d-flex justify-content-center gap-2">
+                          <Button variant="secondary" className="btn btn-sm btn-light border px-3 fw-medium text-muted" onClick={() => setSelectedLeave(row)}>View</Button>
+                          {row.status === 'Pending' && (
+                            <Button variant="destructive" className="btn btn-sm btn-light border px-3 fw-medium text-danger">Cancel</Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4 text-muted">No leave records found in database.</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="d-flex justify-content-between align-items-center p-3 border-top">
-            <div className="text-muted small">Showing 1 to {filteredData.length} of 24 records</div>
+            <div className="text-muted small">Showing {filteredData.length} records</div>
             <div className="d-flex gap-1">
               <Button variant="icon" className="btn btn-sm btn-light border px-2 py-1 text-muted"><ChevronLeft size={16}/></Button>
               <Button className="btn btn-sm btn-primary bg-blue border-0 px-3 py-1 fw-medium">1</Button>
