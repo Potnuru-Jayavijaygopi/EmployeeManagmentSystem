@@ -6,7 +6,6 @@ import {
   X, MapPin, Home, MoreHorizontal, ChevronLeft, ChevronRight, Eye, Trash2
 } from 'lucide-react';
 import './AdminAttendance.css';
-
 import { 
   generateCalendarData
 } from '../../data/adminAttendanceData';
