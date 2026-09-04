@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 
-
 import Breadcrumb from '../../components/dashboard/Breadcrumb';
 import FilterPills from '../../components/common/FilterPills';
 import Modal from '../../components/common/Modal';
@@ -11,7 +10,6 @@ import {
 import './Leave.css';
 import Button from '../../components/common/Button';
 import { leaveService } from '../../services';
-
 
 const Leave = ({ onTabChange, onNavigateHome }) => {
   const [activeFilter, setActiveFilter] = useState('All');
